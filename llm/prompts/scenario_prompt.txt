@@ -1,0 +1,210 @@
+You are an expert data scientist and product manager creating realistic AB test scenarios for interview preparation.
+
+Your task is to generate a comprehensive, fictional business scenario with structured parameters that can be used to simulate and analyze an AB test. Create a detailed, interview-style scenario that feels like a real company asking for help with an experiment.
+
+## Requirements
+
+1. **Generate a detailed, fictional business scenario** with:
+   - **Fictional company name** (e.g., "ShopFast", "DataFlow", "StreamVibe", "PaySecure")
+   - **Detailed business context** (company background, current situation, business goals)
+   - **Current baseline metrics** (include specific conversion rates, engagement rates, etc. in the narrative)
+   - **Specific experiment details** (exactly what is being changed, why, and how)
+   - **Clear business objectives** and success metrics
+   - **Realistic constraints** and business considerations
+   - **Interview-style narrative** that tells a complete story
+
+2. **CRITICAL: Single Intervention Design**
+   - **Test ONLY ONE specific change** at a time (e.g., only the checkout button color, only the headline text, only the pricing display)
+   - **Avoid multiple simultaneous changes** (e.g., don't test both button color AND text AND layout together)
+   - **Be specific about the single element** being tested (e.g., "changing the CTA button from blue to green" not "redesigning the entire checkout page")
+   - **Good experimental design** requires isolating variables to understand causality
+
+3. **Provide structured design parameters** that are:
+   - Statistically sound and realistic
+   - Within valid ranges for AB testing
+   - Consistent with the business scenario
+
+4. **Include expected outcomes** that are:
+   - Mathematically consistent with design parameters
+   - Realistic for the business context
+   - Include business interpretation and risk assessment
+
+## JSON Contract
+
+You MUST return ONLY valid JSON in this exact structure:
+
+```json
+{
+  "scenario": {
+    "title": "Brief, descriptive title with company name",
+    "narrative": "Detailed, interview-style scenario description (4-6 sentences) including: company background, current situation with specific baseline metrics (e.g., 'currently converting at 3.2%'), specific changes being tested, and business context. End with a business goal that defines the MDE in absolute terms (e.g., 'The business believes that if it can increase the CTR by around 3 percentage points, the effort to make the change would be worth the unlock'). Make it feel like a real company asking for help with an experiment.",
+    "company_type": "SaaS",
+    "user_segment": "all_users", 
+    "primary_kpi": "conversion_rate",
+    "secondary_kpis": ["list", "of", "secondary", "metrics"],
+    "unit": "user",
+    "assumptions": ["key assumption 1", "key assumption 2", "key assumption 3"]
+  },
+  "design_params": {
+    "baseline_conversion_rate": 0.18,
+    "mde_absolute": 0.03,
+    "target_lift_pct": 0.167,
+    "alpha": 0.05,
+    "power": 0.8,
+    "allocation": {"control": 0.5, "treatment": 0.5},
+    "expected_daily_traffic": 15000
+  },
+  "llm_expected": {
+    "simulation_hints": {
+      "treatment_conversion_rate": 0.21,
+      "control_conversion_rate": 0.18
+    },
+    "narrative_conclusion": "Expected conclusion based on the scenario",
+    "business_interpretation": "Business impact interpretation",
+    "risk_assessment": "Risk assessment and considerations",
+    "next_steps": "Recommended next steps after the test",
+    "notes": "These are suggestions only; use your simulator for ground truth."
+  }
+}
+```
+
+## Valid Enum Values
+
+### Company Types (choose one):
+- "SaaS"
+- "E-commerce"
+- "Media"
+- "Media/Content"
+- "Fintech"
+- "Marketplace"
+- "Gaming"
+
+### User Segments (choose one):
+- "new_users"
+- "new_sign-ups"
+- "returning_users"
+- "premium_users"
+- "trial_users"
+- "all_users"
+
+### Primary KPIs (choose one):
+- "conversion_rate"
+- "click_through_rate"
+- "revenue_per_user"
+- "engagement_rate"
+
+### Units (choose one):
+- "visitor"
+- "session"
+- "user"
+- "impression"
+
+## Parameter Constraints
+
+### Design Parameters
+- **baseline_conversion_rate**: 0.001 to 0.5 (0.1% to 50%)
+- **target_lift_pct**: -0.5 to 0.5 (-50% to +50%)
+- **alpha**: 0.01 to 0.1 (1% to 10%)
+- **power**: 0.7 to 0.95 (70% to 95%)
+- **allocation**: Must sum to 1.0, both values between 0 and 1
+- **expected_daily_traffic**: 500 to 5,000
+
+**IMPORTANT**: Generate realistic, varied daily traffic numbers between 500 and 5,000 daily visitors:
+- **Small startups**: 500 - 1,500 daily visitors
+- **Growing companies**: 1,500 - 3,000 daily visitors  
+- **Established companies**: 3,000 - 5,000 daily visitors
+
+Use realistic numbers like 750, 1,200, 2,800, 4,200, etc. Avoid round numbers like 1,000, 2,000, 3,000, 5,000 unless they make business sense.
+
+### Simulation Hints
+- **treatment_conversion_rate**: Must be consistent with target_lift_pct
+- **control_conversion_rate**: Should match baseline_conversion_rate
+- Both rates must be between 0.001 and 0.5
+
+## Scenario Types
+
+Generate scenarios for these business contexts:
+
+### E-commerce
+- Checkout flow optimization
+- Product page improvements
+- Cart abandonment reduction
+- Payment method testing
+- Shipping options testing
+
+### SaaS
+- Onboarding flow optimization
+- Feature adoption testing
+- Pricing page optimization
+- Trial-to-paid conversion
+- User engagement features
+
+### Media/Content
+- Article engagement testing
+- Video player optimization
+- Subscription conversion
+- Content recommendation
+- Ad placement testing
+
+### Fintech
+- Account opening flow
+- Payment processing
+- Security feature adoption
+- Investment tool usage
+- Loan application flow
+
+### Marketplace
+- Listing optimization
+- Search result ranking
+- Seller onboarding
+- Buyer conversion
+- Transaction completion
+
+### Gaming
+- Level progression
+- In-app purchase conversion
+- Social feature adoption
+- Retention mechanics
+- Monetization optimization
+
+## Quality Guidelines
+
+1. **Realism**: Use realistic conversion rates and business metrics
+2. **Consistency**: Ensure all parameters are mathematically consistent
+3. **Clarity**: Write clear, actionable scenarios
+4. **Completeness**: Include all required fields and realistic secondary KPIs
+5. **Variety**: Generate diverse scenarios across different business types
+
+## Examples
+
+### Good Scenario Example (Single Intervention)
+**Title**: "ShopFast Checkout Button Color Test"
+**Narrative**: "ShopFast is a fast-growing e-commerce platform specializing in electronics and home goods, currently processing 50,000 orders per month with a checkout conversion rate of 12.5%. The product team has identified that 68% of users abandon their carts during the checkout process, with the majority dropping off at the final 'Complete Purchase' step. After user research, they've discovered that the current blue checkout button may not be prominent enough to drive action. They want to test changing ONLY the checkout button color from blue to green, keeping everything else identical (same text, same size, same position, same page layout). The hypothesis is that a green button will create a stronger call-to-action and increase checkout completion rates. The business believes that if it can increase the checkout conversion rate by around 2 percentage points, the effort to make the change would be worth the unlock."
+
+### Bad Scenario Example (Multiple Interventions)
+**Title**: "E-commerce Checkout Optimization"
+**Narrative**: "An e-commerce company wants to improve user experience and increase conversions by redesigning the entire checkout page with new colors, different form fields, updated copy, and a new layout."
+
+### Bad Scenario Example (Too Vague)
+**Title**: "E-commerce Optimization"
+**Narrative**: "An e-commerce company wants to improve user experience and increase conversions."
+
+### Scenario Quality Guidelines
+- **Include fictional company name** (ShopFast, DataFlow, StreamVibe, PaySecure, etc.)
+- **Provide company background** (what they do, their size, current situation)
+- **Include current baseline metrics** (e.g., "currently converting at 3.2%", "engagement rate of 15%")
+- **Describe ONE specific change** (exactly what single element is being tested and why)
+- **Emphasize single intervention** (test only button color, only headline text, only pricing display)
+- **Include business context** (current metrics, pain points, goals)
+- **End with MDE in absolute terms** (e.g., "increase CTR by 3 percentage points", "boost conversion by 2pp")
+- **Make it interview-realistic** (feels like a real company asking for help)
+- **Use realistic baselines** (2.5% conversion rate, not 50%)
+- **Reasonable MDE targets** (2-5 percentage points absolute increase)
+- **Appropriate traffic** (500-5,000 daily visitors for this simulator)
+- **Consistent parameters** (all numbers make sense together)
+
+## Output Format
+
+Return ONLY the JSON object. Do not include any explanatory text, markdown formatting, or additional commentary. The response must be valid JSON that can be parsed directly.
+
+Generate a realistic AB test scenario now:

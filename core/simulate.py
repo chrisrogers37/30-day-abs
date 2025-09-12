@@ -1,0 +1,350 @@
+"""
+Data simulation engine for AB testing.
+
+This module generates realistic user-level data based on LLM-expected
+conversion rates with proper statistical properties and noise patterns.
+"""
+
+import random
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
+from .types import DesignParams, SimResult, Allocation
+
+
+def simulate_trial(params: DesignParams, true_rates: Dict[str, float], 
+                  seed: int = 42) -> SimResult:
+    """
+    Simulate a complete AB test trial with user-level data.
+    
+    Args:
+        params: Design parameters including allocation and traffic
+        true_rates: Dictionary with 'control' and 'treatment' conversion rates
+        seed: Random seed for reproducibility
+        
+    Returns:
+        SimResult with conversion counts and user-level data
+        
+    Raises:
+        ValueError: If true_rates are invalid or inconsistent
+    """
+    # Validate true rates
+    if 'control' not in true_rates or 'treatment' not in true_rates:
+        raise ValueError("true_rates must contain 'control' and 'treatment' keys")
+    
+    control_rate = true_rates['control']
+    treatment_rate = true_rates['treatment']
+    
+    if not (0 <= control_rate <= 1 and 0 <= treatment_rate <= 1):
+        raise ValueError("Conversion rates must be between 0 and 1")
+    
+    # Set random seed for reproducibility
+    random.seed(seed)
+    
+    # Calculate sample sizes based on allocation
+    # For now, use a simple approach - in production, this would use the calculated sample size
+    total_traffic = params.expected_daily_traffic * 30  # Assume 30 days for now
+    control_n = int(total_traffic * params.allocation.control)
+    treatment_n = int(total_traffic * params.allocation.treatment)
+    
+    # Generate user-level data
+    user_data = _generate_user_data(
+        control_n=control_n,
+        treatment_n=treatment_n,
+        control_rate=control_rate,
+        treatment_rate=treatment_rate,
+        seed=seed
+    )
+    
+    # Count conversions
+    control_conversions = sum(1 for user in user_data if user['group'] == 'control' and user['converted'])
+    treatment_conversions = sum(1 for user in user_data if user['group'] == 'treatment' and user['converted'])
+    
+    return SimResult(
+        control_n=control_n,
+        control_conversions=control_conversions,
+        treatment_n=treatment_n,
+        treatment_conversions=treatment_conversions,
+        user_data=user_data
+    )
+
+
+def _generate_user_data(control_n: int, treatment_n: int, control_rate: float, 
+                       treatment_rate: float, seed: int) -> List[Dict]:
+    """
+    Generate realistic user-level data with proper statistical properties.
+    
+    Args:
+        control_n: Number of users in control group
+        treatment_n: Number of users in treatment group
+        control_rate: True conversion rate for control group
+        treatment_rate: True conversion rate for treatment group
+        seed: Random seed for reproducibility
+        
+    Returns:
+        List of user dictionaries with visitor_id, group, converted, timestamp
+    """
+    user_data = []
+    user_id = 1
+    
+    # Generate control group data
+    for _ in range(control_n):
+        converted = random.random() < control_rate
+        timestamp = _generate_realistic_timestamp(seed + user_id)
+        
+        user_data.append({
+            'visitor_id': f"user_{user_id:06d}",
+            'group': 'control',
+            'converted': converted,
+            'timestamp': timestamp,
+            'session_duration': _generate_session_duration(converted),
+            'page_views': _generate_page_views(converted),
+            'device_type': _generate_device_type(),
+            'traffic_source': _generate_traffic_source()
+        })
+        user_id += 1
+    
+    # Generate treatment group data
+    for _ in range(treatment_n):
+        converted = random.random() < treatment_rate
+        timestamp = _generate_realistic_timestamp(seed + user_id)
+        
+        user_data.append({
+            'visitor_id': f"user_{user_id:06d}",
+            'group': 'treatment',
+            'converted': converted,
+            'timestamp': timestamp,
+            'session_duration': _generate_session_duration(converted),
+            'page_views': _generate_page_views(converted),
+            'device_type': _generate_device_type(),
+            'traffic_source': _generate_traffic_source()
+        })
+        user_id += 1
+    
+    # Shuffle to randomize order
+    random.shuffle(user_data)
+    
+    return user_data
+
+
+def _generate_realistic_timestamp(seed: int) -> str:
+    """
+    Generate realistic timestamps with some patterns (business hours, weekdays).
+    
+    Args:
+        seed: Seed for deterministic generation
+        
+    Returns:
+        ISO format timestamp string
+    """
+    # Use seed to create deterministic but varied timestamps
+    random.seed(seed)
+    
+    # Generate date within last 30 days
+    days_ago = random.randint(0, 30)
+    date = datetime.now() - timedelta(days=days_ago)
+    
+    # Bias toward business hours (9 AM - 6 PM) and weekdays
+    if random.random() < 0.7:  # 70% chance of weekday
+        # Weekday
+        hour = random.choices(
+            range(24),
+            weights=[1, 1, 1, 1, 1, 2, 3, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 3, 2, 1, 1, 1, 1]
+        )[0]
+    else:  # Weekend
+        hour = random.randint(10, 22)  # More limited hours
+    
+    minute = random.randint(0, 59)
+    second = random.randint(0, 59)
+    
+    timestamp = date.replace(hour=hour, minute=minute, second=second)
+    return timestamp.isoformat()
+
+
+def _generate_session_duration(converted: bool) -> int:
+    """
+    Generate realistic session duration based on conversion status.
+    
+    Args:
+        converted: Whether the user converted
+        
+    Returns:
+        Session duration in seconds
+    """
+    if converted:
+        # Converters tend to have longer sessions
+        return random.randint(300, 1800)  # 5-30 minutes
+    else:
+        # Non-converters have shorter sessions
+        return random.randint(30, 600)  # 30 seconds - 10 minutes
+
+
+def _generate_page_views(converted: bool) -> int:
+    """
+    Generate realistic page views based on conversion status.
+    
+    Args:
+        converted: Whether the user converted
+        
+    Returns:
+        Number of page views
+    """
+    if converted:
+        # Converters view more pages
+        return random.randint(3, 15)
+    else:
+        # Non-converters view fewer pages
+        return random.randint(1, 5)
+
+
+def _generate_device_type() -> str:
+    """
+    Generate realistic device type distribution.
+    
+    Returns:
+        Device type string
+    """
+    return random.choices(
+        ['desktop', 'mobile', 'tablet'],
+        weights=[0.4, 0.5, 0.1]
+    )[0]
+
+
+def _generate_traffic_source() -> str:
+    """
+    Generate realistic traffic source distribution.
+    
+    Returns:
+        Traffic source string
+    """
+    return random.choices(
+        ['organic', 'direct', 'social', 'paid', 'email', 'referral'],
+        weights=[0.35, 0.25, 0.15, 0.15, 0.05, 0.05]
+    )[0]
+
+
+def validate_simulation_consistency(sim_result: SimResult, expected_rates: Dict[str, float], 
+                                  tolerance: float = 0.05) -> bool:
+    """
+    Validate that simulated data produces expected conversion rates within tolerance.
+    
+    Args:
+        sim_result: Simulation results
+        expected_rates: Expected conversion rates
+        tolerance: Acceptable deviation from expected rates
+        
+    Returns:
+        True if simulation is consistent with expectations
+    """
+    expected_control = expected_rates.get('control', 0)
+    expected_treatment = expected_rates.get('treatment', 0)
+    
+    actual_control = sim_result.control_rate
+    actual_treatment = sim_result.treatment_rate
+    
+    control_diff = abs(actual_control - expected_control)
+    treatment_diff = abs(actual_treatment - expected_treatment)
+    
+    return control_diff <= tolerance and treatment_diff <= tolerance
+
+
+def add_seasonality_pattern(user_data: List[Dict], pattern_type: str = "weekend") -> List[Dict]:
+    """
+    Add realistic seasonality patterns to user data.
+    
+    Args:
+        user_data: List of user dictionaries
+        pattern_type: Type of seasonality pattern
+        
+    Returns:
+        Modified user data with seasonality effects
+    """
+    if pattern_type == "weekend":
+        # Weekend users have different conversion patterns
+        for user in user_data:
+            timestamp = datetime.fromisoformat(user['timestamp'])
+            if timestamp.weekday() >= 5:  # Weekend
+                # Slightly lower conversion rates on weekends
+                if user['converted'] and random.random() < 0.1:
+                    user['converted'] = False
+    
+    elif pattern_type == "holiday":
+        # Holiday effect (simplified)
+        for user in user_data:
+            timestamp = datetime.fromisoformat(user['timestamp'])
+            # Simulate holiday effect (e.g., Black Friday)
+            if random.random() < 0.05:  # 5% chance of holiday effect
+                if not user['converted'] and random.random() < 0.2:
+                    user['converted'] = True
+    
+    return user_data
+
+
+def export_user_data_csv(user_data: List[Dict], filename: str) -> None:
+    """
+    Export user-level data to CSV file.
+    
+    Args:
+        user_data: List of user dictionaries
+        filename: Output filename
+    """
+    import csv
+    
+    if not user_data:
+        return
+    
+    fieldnames = user_data[0].keys()
+    
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(user_data)
+
+
+def get_aggregate_summary(user_data: List[Dict]) -> Dict:
+    """
+    Generate aggregate summary statistics from user-level data.
+    
+    Args:
+        user_data: List of user dictionaries
+        
+    Returns:
+        Dictionary with summary statistics
+    """
+    if not user_data:
+        return {}
+    
+    # Group by treatment group
+    control_users = [u for u in user_data if u['group'] == 'control']
+    treatment_users = [u for u in user_data if u['group'] == 'treatment']
+    
+    summary = {
+        'total_users': len(user_data),
+        'control': {
+            'count': len(control_users),
+            'conversions': sum(1 for u in control_users if u['converted']),
+            'conversion_rate': sum(1 for u in control_users if u['converted']) / len(control_users) if control_users else 0,
+            'avg_session_duration': sum(u['session_duration'] for u in control_users) / len(control_users) if control_users else 0,
+            'avg_page_views': sum(u['page_views'] for u in control_users) / len(control_users) if control_users else 0
+        },
+        'treatment': {
+            'count': len(treatment_users),
+            'conversions': sum(1 for u in treatment_users if u['converted']),
+            'conversion_rate': sum(1 for u in treatment_users if u['converted']) / len(treatment_users) if treatment_users else 0,
+            'avg_session_duration': sum(u['session_duration'] for u in treatment_users) / len(treatment_users) if treatment_users else 0,
+            'avg_page_views': sum(u['page_views'] for u in treatment_users) / len(treatment_users) if treatment_users else 0
+        }
+    }
+    
+    # Calculate lift metrics
+    control_rate = summary['control']['conversion_rate']
+    treatment_rate = summary['treatment']['conversion_rate']
+    
+    if control_rate > 0:
+        summary['absolute_lift'] = treatment_rate - control_rate
+        summary['relative_lift_pct'] = (treatment_rate - control_rate) / control_rate * 100
+    else:
+        summary['absolute_lift'] = 0
+        summary['relative_lift_pct'] = 0
+    
+    return summary

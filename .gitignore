@@ -1,0 +1,949 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#pdm.lock
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/#use-with-ide
+.pdm.toml
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+#  be added to the global gitignore or merged into this project gitignore.  For a PyCharm
+#  project, it is recommended to include the following files:
+#  .idea/
+#  *.iml
+#  *.ipr
+#  *.iws
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# Linux
+*~
+
+# temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+# Project-specific
+# Generated data files
+data/
+*.csv
+*.json
+!configs/*.json
+!schemas/*.json
+
+# Output files
+output/
+results/
+reports/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# API keys and secrets
+secrets/
+.secrets/
+
+# LLM API keys
+openai_api_key.txt
+anthropic_api_key.txt
+
+# Model cache
+.cache/
+models/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Streamlit cache
+.streamlit/
+
+# FastAPI cache
+.cache/
+
+# Test artifacts
+test_artifacts/
+test_output/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
+# Profiling data
+*.prof
+
+# Memory dumps
+*.hprof
+
+# Performance data
+*.perf
+
+# Benchmark results
+benchmarks/
+*.benchmark
+
+# Documentation builds
+docs/_build/
+docs/build/
+
+# Sphinx
+docs/_static/
+docs/_templates/
+
+# MkDocs
+site/
+
+# Local development
+local/
+dev/
+
+# Production
+prod/
+production/
+
+# Staging
+staging/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Large files
+*.large
+*.big
+
+# Media files (if any)
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+*.wma
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.svg
+*.ico
+*.webp
+
+# Fonts
+*.ttf
+*.otf
+*.woff
+*.woff2
+*.eot
+
+# 3D models
+*.obj
+*.fbx
+*.dae
+*.3ds
+*.blend
+*.max
+*.ma
+*.mb
+
+# CAD files
+*.dwg
+*.dxf
+*.step
+*.stp
+*.iges
+*.igs
+
+# Office files
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.odt
+*.ods
+*.odp
+
+# PDFs
+*.pdf
+
+# Text files with sensitive data
+*.key
+*.pem
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Configuration files with secrets
+config.local.*
+settings.local.*
+*.local.*
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Kubernetes
+*.kubeconfig
+kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Ansible
+*.retry
+.ansible/
+
+# Vagrant
+.vagrant/
+
+# Virtual machines
+*.vmdk
+*.vdi
+*.vbox
+*.vbox-prev
+
+# Cloud provider files
+.aws/
+.azure/
+.gcp/
+.digitalocean/
+
+# CI/CD
+.github/workflows/secrets/
+.gitlab-ci-local/
+.circleci/local/
+.travis/
+azure-pipelines-local.yml
+
+# Monitoring
+grafana/
+prometheus/
+*.prometheus
+
+# Log aggregation
+elasticsearch/
+kibana/
+logstash/
+
+# Message queues
+rabbitmq/
+redis/
+kafka/
+
+# Databases
+postgresql/
+mysql/
+mongodb/
+sqlite/
+
+# Search engines
+solr/
+elasticsearch/
+
+# Cache
+memcached/
+redis/
+
+# Session stores
+sessions/
+
+# Upload directories
+uploads/
+media/
+static/
+
+# User uploads
+user_uploads/
+user_data/
+
+# Generated documentation
+docs/generated/
+api_docs/
+
+# OpenAPI specs (generated)
+openapi.json
+swagger.json
+
+# API documentation
+api_docs/
+
+# Generated schemas
+schemas/generated/
+
+# Type stubs
+*.pyi
+
+# Stub files
+stubs/
+
+# Generated code
+generated/
+auto_generated/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Package files
+*.whl
+*.tar.gz
+
+# Wheel files
+*.wheel
+
+# Source distributions
+*.src.rpm
+
+# Binary distributions
+*.rpm
+*.deb
+*.dmg
+*.pkg
+*.msi
+*.exe
+
+# Installer files
+installer/
+setup/
+
+# Deployment files
+deploy/
+deployment/
+
+# Environment-specific files
+.env.local
+.env.development
+.env.test
+.env.staging
+.env.production
+
+# Local configuration
+local_config.py
+local_settings.py
+local_config.yaml
+local_settings.yaml
+
+# Development tools
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Atom
+.atom/
+
+# Brackets
+.brackets.json
+
+# WebStorm
+.idea/
+
+# PhpStorm
+.idea/
+
+# PyCharm
+.idea/
+
+# IntelliJ IDEA
+.idea/
+
+# Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Local development
+local/
+dev/
+
+# Production
+prod/
+production/
+
+# Staging
+staging/
+
+# Temporary
+tmp/
+temp/
+
+# Cache
+.cache/
+cache/
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration
+config.local.*
+settings.local.*
+*.local.*
+
+# Secrets
+secrets/
+.secrets/
+*.key
+*.pem
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# API keys
+*_api_key.txt
+*_api_key.json
+*_api_key.yaml
+*_api_key.yml
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.staging
+.env.production
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Kubernetes
+*.kubeconfig
+kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Ansible
+*.retry
+.ansible/
+
+# Vagrant
+.vagrant/
+
+# Virtual machines
+*.vmdk
+*.vdi
+*.vbox
+*.vbox-prev
+
+# Cloud provider files
+.aws/
+.azure/
+.gcp/
+.digitalocean/
+
+# CI/CD
+.github/workflows/secrets/
+.gitlab-ci-local/
+.circleci/local/
+.travis/
+azure-pipelines-local.yml
+
+# Monitoring
+grafana/
+prometheus/
+*.prometheus
+
+# Log aggregation
+elasticsearch/
+kibana/
+logstash/
+
+# Message queues
+rabbitmq/
+redis/
+kafka/
+
+# Databases
+postgresql/
+mysql/
+mongodb/
+sqlite/
+
+# Search engines
+solr/
+elasticsearch/
+
+# Cache
+memcached/
+redis/
+
+# Session stores
+sessions/
+
+# Upload directories
+uploads/
+media/
+static/
+
+# User uploads
+user_uploads/
+user_data/
+
+# Generated documentation
+docs/generated/
+api_docs/
+
+# OpenAPI specs (generated)
+openapi.json
+swagger.json
+
+# API documentation
+api_docs/
+
+# Generated schemas
+schemas/generated/
+
+# Type stubs
+*.pyi
+
+# Stub files
+stubs/
+
+# Generated code
+generated/
+auto_generated/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Package files
+*.whl
+*.tar.gz
+
+# Wheel files
+*.wheel
+
+# Source distributions
+*.src.rpm
+
+# Binary distributions
+*.rpm
+*.deb
+*.dmg
+*.pkg
+*.msi
+*.exe
+
+# Installer files
+installer/
+setup/
+
+# Deployment files
+deploy/
+deployment/
+
+# Environment-specific files
+.env.local
+.env.development
+.env.test
+.env.staging
+.env.production
+
+# Local configuration
+local_config.py
+local_settings.py
+local_config.yaml
+local_settings.yaml
+
+# Development tools
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Atom
+.atom/
+
+# Brackets
+.brackets.json
+
+# WebStorm
+.idea/
+
+# PhpStorm
+.idea/
+
+# PyCharm
+.idea/
+
+# IntelliJ IDEA
+.idea/
+
+# Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+design_docs/
