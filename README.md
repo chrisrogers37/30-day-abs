@@ -1,4 +1,4 @@
-# AB Test Simulator
+# 30 Day A/Bs
 
 A lean, simple AB test simulator for interview preparation that generates realistic business scenarios and provides comprehensive statistical analysis.
 
