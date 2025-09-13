@@ -1,15 +1,7 @@
-# Minimal requirements for Streamlit deployment
-# Using only pre-compiled wheels to avoid compilation issues
-
-# Core Streamlit
-streamlit==1.28.1
-
-# Data handling - using newer versions with pre-compiled wheels
-pandas>=2.1.0
-numpy>=1.24.0
-
-# Optional: Only if needed for the app
-plotly>=5.15.0
-
-# Environment and settings
-python-dotenv>=1.0.0
+streamlit
+pandas
+numpy
+plotly
+python-dotenv
+httpx
+openai
