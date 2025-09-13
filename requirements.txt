@@ -1,7 +1,7 @@
 streamlit
 pandas
 numpy
-plotly
-python-dotenv
 httpx
 openai
+pydantic
+python-dotenv
