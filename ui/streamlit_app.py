@@ -378,31 +378,43 @@ def validate_question_answer(question_num, user_answer):
     elif question_num == 2:
         # Question 2: Sample size calculation
         from core.design import compute_sample_size
-        sample_size_result = compute_sample_size(
-            baseline_rate=baseline,
-            target_lift=target_lift,
+        from core.types import DesignParams, Allocation
+        
+        # Create DesignParams object
+        design_params = DesignParams(
+            baseline_conversion_rate=baseline,
+            target_lift_pct=target_lift,
             alpha=design.alpha,
             power=design.power,
-            direction="two_tailed"
+            allocation=Allocation(0.5, 0.5),
+            expected_daily_traffic=design.expected_daily_traffic
         )
-        correct_sample_size = sample_size_result.sample_size_per_group
-        tolerance = 50  # 50 users tolerance
+        
+        sample_size_result = compute_sample_size(design_params)
+        correct_sample_size = sample_size_result.per_arm
+        tolerance = 100  # 100 users tolerance to account for calculator differences
         is_correct = abs(user_answer - correct_sample_size) <= tolerance
-        return is_correct, f"Correct answer: {correct_sample_size:,} users per group"
+        return is_correct, f"Correct answer: {correct_sample_size:,} users per group (±{tolerance} tolerance for calculator differences)"
     
     elif question_num == 3:
         # Question 3: Experiment duration
         daily_traffic = design.expected_daily_traffic
         # Calculate required sample size for correct duration
         from core.design import compute_sample_size
-        sample_size_result = compute_sample_size(
-            baseline_rate=baseline,
-            target_lift=target_lift,
+        from core.types import DesignParams, Allocation
+        
+        # Create DesignParams object
+        design_params = DesignParams(
+            baseline_conversion_rate=baseline,
+            target_lift_pct=target_lift,
             alpha=design.alpha,
             power=design.power,
-            direction="two_tailed"
+            allocation=Allocation(0.5, 0.5),
+            expected_daily_traffic=design.expected_daily_traffic
         )
-        required_sample_size = sample_size_result.sample_size_per_group * 2  # Total sample size
+        
+        sample_size_result = compute_sample_size(design_params)
+        required_sample_size = sample_size_result.per_arm * 2  # Total sample size
         correct_duration = max(1, round(required_sample_size / daily_traffic))
         tolerance = 2  # 2 days tolerance
         is_correct = abs(user_answer - correct_duration) <= tolerance
@@ -412,7 +424,6 @@ def validate_question_answer(question_num, user_answer):
 
 def ask_single_design_question(question_num):
     """Ask a single design question based on question number."""
-    st.markdown("### 🎯 Step 2: Design the Experiment")
     st.markdown(f"**Question {question_num} of 5**")
     
     if question_num == 1:
@@ -442,8 +453,35 @@ def ask_single_design_question(question_num):
     
     elif question_num == 2:
         # Question 2: Sample size calculation
-        st.markdown("**Based on the baseline rate, target lift, alpha, and power, what sample size do you need per group to detect the target effect?**")
-        st.markdown("*Hint: Use the two-proportion z-test sample size formula with the given parameters*")
+        if "scenario_data" not in st.session_state or not st.session_state.scenario_data:
+            st.error("❌ No scenario available. Please generate a scenario first.")
+            return
+        scenario = st.session_state.scenario_data
+        design = scenario.design_params
+        st.markdown(f"**Based on the baseline rate and a target alpha of {design.alpha} and power of {design.power}, how large of a sample size would we need to detect the target effect?**")
+        
+        # Add helpful resources and formula
+        st.markdown("**📚 Resources:**")
+        st.markdown("• [Evan Miller's Sample Size Calculator](https://www.evanmiller.org/ab-testing/sample-size.html) - Use this to approximate your answer")
+        
+        st.markdown("**🧮 Sample Size Formula:**")
+        st.markdown("""
+        For a **two-proportion z-test**, the sample size per group is:
+        
+        ```
+        n = (z_α/2 + z_β)² × [p₁(1-p₁) + p₂(1-p₂)] / (p₂ - p₁)²
+        ```
+        
+        **Where:**
+        - `z_α/2` = Critical value for two-tailed test (1.96 for α = 0.05)
+        - `z_β` = Critical value for power (0.841621 for 80% power, one-tailed)
+        - `p₁` = Baseline conversion rate
+        - `p₂` = Treatment conversion rate = p₁ × (1 + lift%)
+        """)
+        
+        st.markdown("**💡 Tip:** You can use [Evan Miller's calculator](https://www.evanmiller.org/ab-testing/sample-size.html) to approximate your answer, then verify with the formula above. Different calculators may give slightly different results due to formula variations.")
+        
+        st.markdown("*💡 Hint: Use the two-proportion z-test sample size formula with the given parameters*")
         sample_size = st.number_input(
             "Sample size per group:",
             min_value=100,
@@ -715,7 +753,7 @@ def score_design_answers(user_answers, scenario_data, sample_size_result):
     st.markdown("### 📊 Design Results")
     
     # Calculate correct answers
-    correct_sample_size = sample_size_result.sample_size_per_group
+    correct_sample_size = sample_size_result.per_arm
     correct_duration = max(1, round(correct_sample_size * 2 / scenario_data.design_params.expected_daily_traffic))
     
     # Calculate absolute lift in percentage points
@@ -950,13 +988,10 @@ def main():
         
         with col2:
             if st.session_state.current_question < 5:
-                # Only show Next Question if current question is completed
-                if st.session_state.current_question in st.session_state.completed_questions:
-                    if st.button("➡️ Next Question", type="primary"):
-                        st.session_state.current_question += 1
-                        st.rerun()
-                else:
-                    st.info("💡 Answer the current question correctly to proceed")
+                # Show Next Question button (user can proceed even if current question is wrong)
+                if st.button("➡️ Next Question", type="primary"):
+                    st.session_state.current_question += 1
+                    st.rerun()
             else:
                 # For question 5, check if it's completed before allowing submit
                 if st.session_state.current_question in st.session_state.completed_questions:

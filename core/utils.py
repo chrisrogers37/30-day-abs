@@ -8,6 +8,8 @@ calculations, and evaluation scoring.
 import math
 from typing import Dict, List, Optional, Tuple, Union
 
+from .design import _get_z_score
+
 
 def relative_lift_to_absolute(control_rate: float, relative_lift_pct: float) -> float:
     """
@@ -117,8 +119,8 @@ def calculate_sample_size_for_revenue_detection(min_revenue_impact: float,
     p2 = p1 + min_conversion_impact
     
     # Calculate z-scores
-    z_alpha = 1.96  # For alpha = 0.05, two-tailed
-    z_beta = 0.84   # For power = 0.8
+    z_alpha = _get_z_score(alpha, "two_tailed")
+    z_beta = _get_z_score(1 - power, "two_tailed")
     
     # Calculate pooled proportion
     p_pooled = (p1 + p2) / 2
@@ -233,7 +235,8 @@ def calculate_confidence_interval_for_proportion(p: float, n: int,
     se = math.sqrt(p * (1 - p) / n)
     
     # Calculate z-score for confidence level
-    z_score = 1.96 if confidence_level == 0.95 else 1.645  # Simplified
+    alpha = 1 - confidence_level
+    z_score = _get_z_score(alpha, "two_tailed")
     
     # Calculate margin of error
     margin_of_error = z_score * se
@@ -268,7 +271,8 @@ def calculate_confidence_interval_for_difference(p1: float, p2: float,
     se = math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
     
     # Calculate z-score for confidence level
-    z_score = 1.96 if confidence_level == 0.95 else 1.645  # Simplified
+    alpha = 1 - confidence_level
+    z_score = _get_z_score(alpha, "two_tailed")
     
     # Calculate margin of error
     margin_of_error = z_score * se
@@ -301,7 +305,7 @@ def calculate_power_for_proportions(p1: float, p2: float, n: int,
     se = math.sqrt(p1 * (1 - p1) / n + p2 * (1 - p2) / n)
     
     # Calculate critical value
-    z_alpha = 1.96 if alpha == 0.05 else 1.645  # Simplified
+    z_alpha = _get_z_score(alpha, "two_tailed")
     
     # Calculate z-score for the effect
     effect_size = abs(p2 - p1)
@@ -340,8 +344,8 @@ def calculate_minimum_detectable_effect(p1: float, n: int, alpha: float = 0.05,
     Returns:
         Minimum detectable effect as absolute difference
     """
-    z_alpha = 1.96 if alpha == 0.05 else 1.645  # Simplified
-    z_beta = 0.84 if power == 0.8 else 1.28     # Simplified
+    z_alpha = _get_z_score(alpha, "two_tailed")
+    z_beta = _get_z_score(1 - power, "two_tailed")
     
     # Standard error for equal sample sizes
     se = math.sqrt(2 * p1 * (1 - p1) / n)
@@ -367,8 +371,8 @@ def calculate_required_sample_size_for_power(p1: float, p2: float,
     Returns:
         Required sample size per group
     """
-    z_alpha = 1.96 if alpha == 0.05 else 1.645  # Simplified
-    z_beta = 0.84 if power == 0.8 else 1.28     # Simplified
+    z_alpha = _get_z_score(alpha, "two_tailed")
+    z_beta = _get_z_score(1 - power, "two_tailed")
     
     # Calculate pooled proportion
     p_pooled = (p1 + p2) / 2
@@ -467,7 +471,8 @@ def calculate_conversion_rate_confidence_interval(p: float, n: int,
     se = calculate_conversion_rate_standard_error(p, n)
     
     # Calculate z-score for confidence level
-    z_score = 1.96 if confidence_level == 0.95 else 1.645  # Simplified
+    alpha = 1 - confidence_level
+    z_score = _get_z_score(alpha, "two_tailed")
     
     # Calculate margin of error
     margin_of_error = z_score * se

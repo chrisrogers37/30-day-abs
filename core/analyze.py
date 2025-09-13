@@ -9,6 +9,7 @@ import math
 from typing import Dict, Tuple, Optional
 
 from .types import SimResult, AnalysisResult, BusinessImpact, TestQuality, DesignParams
+from .design import _get_z_score
 
 
 def analyze_results(sim_result: SimResult, alpha: float = 0.05, 
@@ -271,7 +272,7 @@ def _calculate_confidence_interval(p1: float, p2: float, n1: int, n2: int,
     se = math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
     
     # Calculate margin of error
-    z_alpha_2 = 1.96  # For 95% CI, approximate
+    z_alpha_2 = _get_z_score(alpha, "two_tailed")
     margin_of_error = z_alpha_2 * se
     
     # Calculate difference
@@ -325,7 +326,7 @@ def _calculate_achieved_power(p1: float, p2: float, n1: int, n2: int,
     se = math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
     
     # Calculate critical value
-    z_alpha = 1.96 if direction == "two_tailed" else 1.645
+    z_alpha = _get_z_score(alpha, direction)
     critical_value = z_alpha * se
     
     # Calculate z-score for the effect

@@ -42,12 +42,9 @@ def compute_sample_size(params: DesignParams) -> SampleSize:
     z_alpha = _get_z_score(alpha, "two_tailed")
     z_beta = _get_z_score(1 - power, "one_tailed")
     
-    # Calculate pooled proportion for standard error
-    p_pooled = (p1 + p2) / 2
-    
-    # Calculate required sample size per arm
-    numerator = (z_alpha * math.sqrt(2 * p_pooled * (1 - p_pooled)) + 
-                z_beta * math.sqrt(p1 * (1 - p1) + p2 * (1 - p2))) ** 2
+    # Calculate required sample size per arm using standard formula
+    # Standard formula: n = (z_alpha + z_beta)^2 * [p1(1-p1) + p2(1-p2)] / (p2-p1)^2
+    numerator = (z_alpha + z_beta) ** 2 * (p1 * (1 - p1) + p2 * (1 - p2))
     denominator = (p2 - p1) ** 2
     
     n_per_arm = math.ceil(numerator / denominator)
@@ -87,28 +84,35 @@ def _get_z_score(alpha: float, direction: str) -> float:
     # Use inverse normal approximation
     # For common alpha values, use exact values
     if abs(alpha - 0.05) < 1e-6:
-        return 1.96 if direction == "two_tailed" else 1.645
+        z_score = 1.96 if direction == "two_tailed" else 1.645
     elif abs(alpha - 0.01) < 1e-6:
-        return 2.576 if direction == "two_tailed" else 2.326
+        z_score = 2.576 if direction == "two_tailed" else 2.326
     elif abs(alpha - 0.1) < 1e-6:
-        return 1.645 if direction == "two_tailed" else 1.282
+        z_score = 1.645 if direction == "two_tailed" else 1.282
+    else:
+        # For other values, use scipy.stats.norm.ppf
+        try:
+            from scipy.stats import norm
+            z_score = norm.ppf(1 - alpha)
+        except ImportError:
+            # Fallback approximation if scipy not available
+            import math
+            # Simple approximation for common values
+            if alpha < 0.01:
+                z_score = 2.576
+            elif alpha < 0.05:
+                z_score = 1.96
+            elif alpha < 0.1:
+                z_score = 1.645
+            else:
+                z_score = 1.282
     
-    # For other values, use scipy.stats.norm.ppf
-    try:
-        from scipy.stats import norm
-        return norm.ppf(1 - alpha)
-    except ImportError:
-        # Fallback approximation if scipy not available
-        import math
-        # Simple approximation for common values
-        if alpha < 0.01:
-            return 2.576
-        elif alpha < 0.05:
-            return 1.96
-        elif alpha < 0.1:
-            return 1.645
-        else:
-            return 1.282
+    # Log z-score calculation for debugging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.debug(f"Z-score calculation: alpha={alpha:.6f}, direction={direction}, z_score={z_score:.6f}")
+    
+    return z_score
 
 
 def _calculate_achieved_power(p1: float, p2: float, n: int, alpha: float, 
