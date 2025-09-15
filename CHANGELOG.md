@@ -50,6 +50,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Educational formula explanations in the UI
 - Clear error messages and user guidance
 
+## [1.1.0] - 2025-01-14
+
+### Added
+- **Jupyter Notebook Framework**: Downloadable template notebook for offline calculation work
+- **Enhanced Question Flow**: Streamlined from 7 to 6 questions focusing on practical calculations
+- **Business Impact Focus**: New Question 6 for calculating additional conversions per day
+- **Improved Navigation**: Fixed question numbering inconsistencies and navigation logic
+- **Offline Learning**: Complete framework for working through design questions outside the web app
+
+### Changed
+- **Question Flow Optimization**: Removed theoretical power analysis question (Question 7) for more practical focus
+- **Enhanced UI**: Added notebook download section in design step with clear instructions
+- **Question Numbering**: Fixed inconsistencies between navigation (5 vs 7 questions) to consistent 6 questions
+- **Scoring Logic**: Updated to handle 6 questions instead of 7 with proper validation
+
+### Improved
+- **User Experience**: More focused learning path from statistical design to business impact
+- **Educational Value**: Framework notebook provides structured approach to calculations
+- **Interview Preparation**: Emphasizes most valuable skills for A/B testing interviews
+- **Time Efficiency**: Streamlined flow gets users to data analysis faster
+
+### Technical Improvements
+- **Template System**: Created reusable Jupyter notebook template with placeholders
+- **Download Integration**: Seamless notebook download with timestamped filenames
+- **Error Handling**: Robust file handling for notebook template delivery
+- **Code Organization**: Clean separation of concerns between web app and offline framework
+
 ## [Unreleased]
 
 ### Planned

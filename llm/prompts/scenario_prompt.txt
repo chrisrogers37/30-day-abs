@@ -37,7 +37,7 @@ You MUST return ONLY valid JSON in this exact structure:
 {
   "scenario": {
     "title": "Brief, descriptive title with company name",
-    "narrative": "Detailed, interview-style scenario description (4-6 sentences) including: company background, current situation with specific baseline metrics (e.g., 'currently converting at 3.2%'), specific changes being tested, and business context. End with a business goal that defines the MDE in absolute terms (e.g., 'The business believes that if it can increase the CTR by around 3 percentage points, the effort to make the change would be worth the unlock'). Make it feel like a real company asking for help with an experiment.",
+    "narrative": "Detailed, interview-style scenario description (4-6 sentences) including: company background, current situation with specific baseline metrics (e.g., 'currently converting at 3.2%'), specific changes being tested, and business context. End with a business goal that defines the MDE as a raw ratio increase (e.g., 'The business believes that if it can increase the CTR by around 0.03 (3 percentage points), the effort to make the change would be worth the unlock'). CRITICAL: The MDE must always be expressed as a raw ratio increase (0.001 to 0.1), not as absolute time, revenue, or other continuous metrics. Make it feel like a real company asking for help with an experiment.",
     "company_type": "SaaS",
     "user_segment": "all_users", 
     "primary_kpi": "conversion_rate",
@@ -49,8 +49,8 @@ You MUST return ONLY valid JSON in this exact structure:
     "baseline_conversion_rate": 0.18,
     "mde_absolute": 0.03,
     "target_lift_pct": 0.167,
-    "alpha": 0.05,
-    "power": 0.8,
+    "alpha": 0.01,
+    "power": 0.90,
     "allocation": {"control": 0.5, "treatment": 0.5},
     "expected_daily_traffic": 15000
   },
@@ -88,10 +88,12 @@ You MUST return ONLY valid JSON in this exact structure:
 - "all_users"
 
 ### Primary KPIs (choose one):
-- "conversion_rate"
-- "click_through_rate"
-- "revenue_per_user"
-- "engagement_rate"
+- "conversion_rate" - proportion of users who complete an action (e.g., signup, purchase, download)
+- "click_through_rate" - proportion of users who click on a specific element (e.g., button, link, CTA)
+- "revenue_per_user" - proportion of users who generate revenue (e.g., make a purchase, subscribe)
+- "engagement_rate" - proportion of users who meet engagement criteria (e.g., spend 15+ minutes, view 3+ pages)
+
+**IMPORTANT**: All KPIs must be measurable as proportions/percentages, not as continuous metrics like time duration, absolute revenue amounts, or session counts.
 
 ### Units (choose one):
 - "visitor"
@@ -103,11 +105,42 @@ You MUST return ONLY valid JSON in this exact structure:
 
 ### Design Parameters
 - **baseline_conversion_rate**: 0.001 to 0.5 (0.1% to 50%)
+- **mde_absolute**: 0.001 to 0.1 (raw ratio increase, equivalent to 0.1% to 10% percentage points) - MUST be a raw ratio, not absolute time/revenue
 - **target_lift_pct**: -0.5 to 0.5 (-50% to +50%)
 - **alpha**: 0.01 to 0.1 (1% to 10%)
 - **power**: 0.7 to 0.95 (70% to 95%)
 - **allocation**: Must sum to 1.0, both values between 0 and 1
 - **expected_daily_traffic**: 500 to 5,000
+
+**CRITICAL MDE CONSTRAINT**: The mde_absolute must always be a raw ratio between 0.001 and 0.1 (e.g., 0.03 = 3 percentage points), never absolute values like "3 minutes", "$50 revenue", or "2 sessions". The narrative must frame the business goal with the raw ratio value.
+
+**MATHEMATICAL CONSISTENCY REQUIREMENT**: The mde_absolute and target_lift_pct must be mathematically consistent:
+- mde_absolute = baseline_conversion_rate × target_lift_pct
+- target_lift_pct = mde_absolute ÷ baseline_conversion_rate
+- Example: baseline=0.18, mde_absolute=0.03, then target_lift_pct=0.03÷0.18=0.167
+
+### Statistical Parameters (Choose Based on Business Context)
+
+**Alpha (Significance Level) - Choose based on business risk tolerance:**
+- **0.01 (1%)**: High-stakes decisions, regulatory compliance, safety-critical changes, financial services
+- **0.05 (5%)**: Standard business decisions, most A/B tests, typical product optimization
+- **0.10 (10%)**: Exploratory tests, low-risk experiments, early-stage startups, resource-constrained teams
+
+**Power (Statistical Power) - Choose based on business importance and resources:**
+- **0.70 (70%)**: Exploratory tests, limited resources, early-stage validation, low-cost experiments
+- **0.80 (80%)**: Standard business experiments, most product optimization tests
+- **0.90 (90%)**: High-stakes decisions, regulatory requirements, major feature launches
+- **0.95 (95%)**: Critical business decisions, safety testing, compliance requirements
+
+**Choose alpha and power based on:**
+- **Business risk tolerance**: Higher stakes = lower alpha, higher power
+- **Cost of false positives vs false negatives**: Balance Type I and Type II errors
+- **Resource constraints**: Higher power requires larger sample sizes
+- **Regulatory requirements**: Some industries require specific thresholds
+- **Decision importance**: Critical decisions need higher power and lower alpha
+- **Company stage**: Startups may use higher alpha/lower power for speed
+
+**Vary these parameters realistically** - don't always use 0.05 for alpha and 0.8 for power. Consider the business context when choosing values.
 
 **IMPORTANT**: Generate realistic, varied daily traffic numbers between 500 and 5,000 daily visitors:
 - **Small startups**: 500 - 1,500 daily visitors
@@ -179,6 +212,16 @@ Generate scenarios for these business contexts:
 
 ### Good Scenario Example (Single Intervention)
 **Title**: "ShopFast Checkout Button Color Test"
+
+**CORRECT MDE Examples** (raw ratio increases):
+- "increase conversion rate by 0.02 (2 percentage points)" (mde_absolute: 0.02)
+- "boost click-through rate by 0.035 (3.5 percentage points)" (mde_absolute: 0.035)
+- "improve engagement rate by 0.018 (1.8 percentage points)" (mde_absolute: 0.018)
+
+**INCORRECT MDE Examples** (continuous metrics - DO NOT USE):
+- "increase session duration by 3 minutes" ❌
+- "boost revenue by $50 per user" ❌
+- "improve page views by 2 sessions" ❌
 **Narrative**: "ShopFast is a fast-growing e-commerce platform specializing in electronics and home goods, currently processing 50,000 orders per month with a checkout conversion rate of 12.5%. The product team has identified that 68% of users abandon their carts during the checkout process, with the majority dropping off at the final 'Complete Purchase' step. After user research, they've discovered that the current blue checkout button may not be prominent enough to drive action. They want to test changing ONLY the checkout button color from blue to green, keeping everything else identical (same text, same size, same position, same page layout). The hypothesis is that a green button will create a stronger call-to-action and increase checkout completion rates. The business believes that if it can increase the checkout conversion rate by around 2 percentage points, the effort to make the change would be worth the unlock."
 
 ### Bad Scenario Example (Multiple Interventions)

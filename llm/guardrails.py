@@ -49,6 +49,7 @@ class LLMGuardrails:
         # Parameter bounds
         self.bounds = {
             'baseline_conversion_rate': (0.001, 0.5),
+            'mde_absolute': (0.001, 0.1),  # 0.1% to 10% percentage points
             'target_lift_pct': (-0.5, 0.5),
             'alpha': (0.01, 0.1),
             'power': (0.7, 0.95),
@@ -97,6 +98,9 @@ class LLMGuardrails:
             # Validate parameter consistency
             self._validate_parameter_consistency(scenario_response_dto, result)
             
+            # Validate metric consistency (proportion-based metrics only)
+            self._validate_metric_consistency(scenario_response_dto, result)
+            
             # Validate realism
             self._validate_realism(scenario_response_dto, result)
             
@@ -123,6 +127,15 @@ class LLMGuardrails:
             result.errors.append(
                 f"Baseline conversion rate {baseline} is outside valid range "
                 f"[{self.bounds['baseline_conversion_rate'][0]}, {self.bounds['baseline_conversion_rate'][1]}]"
+            )
+        
+        # Check MDE absolute (must be in percentage points)
+        mde_absolute = design_params.mde_absolute
+        if not (self.bounds['mde_absolute'][0] <= mde_absolute <= self.bounds['mde_absolute'][1]):
+            result.errors.append(
+                f"MDE absolute {mde_absolute} is outside valid range "
+                f"[{self.bounds['mde_absolute'][0]}, {self.bounds['mde_absolute'][1]}] "
+                f"(must be a raw ratio between 0.001-0.1, not absolute time/revenue)"
             )
         
         # Check target lift
@@ -238,6 +251,42 @@ class LLMGuardrails:
                 result.errors.append(
                     f"{rate_name} {rate_value} is outside valid range [{bounds[0]}, {bounds[1]}]"
                 )
+    
+    def _validate_metric_consistency(self, scenario_response_dto: ScenarioResponseDTO, result: ValidationResult):
+        """Validate that metrics are proportion-based and consistent with statistical tests."""
+        scenario = scenario_response_dto.scenario
+        design_params = scenario_response_dto.design_params
+        
+        # Check that MDE is reasonable for proportion-based metrics
+        mde_absolute = design_params.mde_absolute
+        baseline = design_params.baseline_conversion_rate
+        target_lift = design_params.target_lift_pct
+        
+        # CRITICAL: Check mathematical consistency between mde_absolute and target_lift_pct
+        expected_target_lift = mde_absolute / baseline if baseline > 0 else 0
+        if abs(target_lift - expected_target_lift) > 0.001:  # 0.1% tolerance
+            result.errors.append(
+                f"Mathematical inconsistency: mde_absolute ({mde_absolute:.3f}) and target_lift_pct ({target_lift:.3f}) are not consistent. "
+                f"Expected target_lift_pct = mde_absolute / baseline = {expected_target_lift:.3f}. "
+                f"Please ensure: mde_absolute = baseline × target_lift_pct"
+            )
+        
+        # MDE should be a reasonable percentage of baseline (not more than 50% of baseline)
+        if mde_absolute > baseline * 0.5:
+            result.warnings.append(
+                f"MDE ({mde_absolute:.1%}) is very large relative to baseline ({baseline:.1%}). "
+                f"Consider if this is realistic for a proportion-based metric."
+            )
+        
+        # Check that primary KPI is appropriate for proportion-based testing
+        primary_kpi = scenario.primary_kpi.lower()
+        valid_proportion_kpis = ['conversion_rate', 'click_through_rate', 'engagement_rate']
+        
+        if primary_kpi not in valid_proportion_kpis:
+            result.warnings.append(
+                f"Primary KPI '{primary_kpi}' may not be appropriate for proportion-based testing. "
+                f"Consider using: {valid_proportion_kpis}"
+            )
     
     def _validate_realism(self, scenario_response_dto: ScenarioResponseDTO, result: ValidationResult):
         """Validate realism of the scenario."""
