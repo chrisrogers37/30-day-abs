@@ -86,11 +86,12 @@ class LLMScenarioGenerator:
   },
   "design_params": {
     "baseline_conversion_rate": 0.025,
+    "mde_absolute": 0.005,
     "target_lift_pct": 0.20,
-    "alpha": 0.05,
-    "power": 0.8,
+    "alpha": 0.01,
+    "power": 0.95,
     "allocation": {"control": 0.5, "treatment": 0.5},
-    "expected_daily_traffic": 10000
+    "expected_daily_traffic": 3200
   },
   "llm_expected": {
     "simulation_hints": {

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Streamlit app for 30 Day ABs - AB Test Interview Practice.
+Streamlit app for 30 Day A/Bs - AB Test Interview Practice.
 
 This app allows users to:
 1. Generate realistic AB test scenarios
@@ -48,7 +48,7 @@ from schemas.scenario import ScenarioResponseDTO
 
 # Page configuration
 st.set_page_config(
-    page_title="30 Day ABs",
+    page_title="30 Day A/Bs",
     page_icon="🧪",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -283,28 +283,6 @@ def display_scenario(scenario_dto):
     
     st.markdown("### The Scenario")
     st.markdown(scenario.narrative)
-    
-    # Design parameters
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown('<div class="metric-box">', unsafe_allow_html=True)
-        st.metric("Baseline Rate", f"{design.baseline_conversion_rate:.1%}")
-        st.metric("MDE (absolute)", f"{design.mde_absolute:.1%}")
-        st.metric("Target Relative Lift", f"{design.target_lift_pct:.1%}")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="metric-box">', unsafe_allow_html=True)
-        st.metric("Alpha", f"{design.alpha}")
-        st.metric("Power", f"{design.power}")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown('<div class="metric-box">', unsafe_allow_html=True)
-        st.metric("Daily Traffic", f"{design.expected_daily_traffic:,}")
-        st.metric("Allocation", f"{design.allocation.control:.0%} / {design.allocation.treatment:.0%}")
-        st.markdown('</div>', unsafe_allow_html=True)
 
 def display_simulation_results(sim_result, analysis):
     """Display simulation results."""
@@ -340,6 +318,27 @@ def display_simulation_results(sim_result, analysis):
         st.metric("Effect Size", f"{analysis.effect_size:.3f}")
         st.metric("Power Achieved", f"{analysis.power_achieved:.1%}")
 
+def create_notebook_download():
+    """Create Jupyter notebook download button."""
+    notebook_path = "notebooks/ab_test_design_template.ipynb"
+    
+    try:
+        with open(notebook_path, 'r') as f:
+            notebook_content = f.read()
+        
+        st.download_button(
+            label="📓 Download Design Framework (Jupyter Notebook)",
+            data=notebook_content,
+            file_name=f"ab_test_design_framework_{datetime.now().strftime('%Y%m%d_%H%M%S')}.ipynb",
+            mime="application/json",
+            help="Download a Jupyter notebook framework to work through the design questions offline"
+        )
+        
+        st.info("📓 The notebook contains a structured framework for working through all 6 design questions with placeholders for your calculations.")
+        
+    except FileNotFoundError:
+        st.error("❌ Design framework notebook not found. Please ensure the template exists.")
+
 def create_csv_download(sim_result):
     """Create CSV download button."""
     if sim_result.user_data:
@@ -368,15 +367,31 @@ def validate_question_answer(question_num, user_answer):
     target_lift = design.target_lift_pct
     
     if question_num == 1:
-        # Question 1: Relative lift calculation from MDE
+        # Question 1: Business's targeted MDE
+        mde_absolute = design.mde_absolute  # MDE in absolute terms from scenario
+        correct_answer = mde_absolute * 100  # Convert to percentage points
+        tolerance = 0.5  # 0.5 percentage points tolerance
+        is_correct = abs(user_answer - correct_answer) <= tolerance
+        return is_correct, f"Correct answer: {correct_answer:.1f} percentage points"
+    
+    elif question_num == 2:
+        # Question 2: Target conversion rate calculation
+        mde_absolute = design.mde_absolute  # MDE in absolute terms from scenario
+        correct_answer = (baseline + mde_absolute) * 100  # Convert to percentage
+        tolerance = 0.5  # 0.5% tolerance
+        is_correct = abs(user_answer - correct_answer) <= tolerance
+        return is_correct, f"Correct answer: {correct_answer:.1f}%"
+    
+    elif question_num == 3:
+        # Question 3: Relative lift calculation from MDE
         mde_absolute = design.mde_absolute  # MDE in absolute terms from scenario
         correct_answer = (mde_absolute / baseline) * 100  # Convert to relative lift percentage
         tolerance = 2.0  # 2% tolerance for relative lift
         is_correct = abs(user_answer - correct_answer) <= tolerance
         return is_correct, f"Correct answer: {correct_answer:.1f}%"
     
-    elif question_num == 2:
-        # Question 2: Sample size calculation
+    elif question_num == 4:
+        # Question 4: Sample size calculation
         from core.design import compute_sample_size
         from core.types import DesignParams, Allocation
         
@@ -396,8 +411,8 @@ def validate_question_answer(question_num, user_answer):
         is_correct = abs(user_answer - correct_sample_size) <= tolerance
         return is_correct, f"Correct answer: {correct_sample_size:,} users per group (±{tolerance} tolerance for calculator differences)"
     
-    elif question_num == 3:
-        # Question 3: Experiment duration
+    elif question_num == 5:
+        # Question 5: Experiment duration
         daily_traffic = design.expected_daily_traffic
         # Calculate required sample size for correct duration
         from core.design import compute_sample_size
@@ -416,18 +431,76 @@ def validate_question_answer(question_num, user_answer):
         sample_size_result = compute_sample_size(design_params)
         required_sample_size = sample_size_result.per_arm * 2  # Total sample size
         correct_duration = max(1, round(required_sample_size / daily_traffic))
-        tolerance = 2  # 2 days tolerance
+        tolerance = 1  # 1 day tolerance
         is_correct = abs(user_answer - correct_duration) <= tolerance
         return is_correct, f"Correct answer: {correct_duration} days"
+    
+    elif question_num == 6:
+        # Question 6: Business Impact Calculation
+        mde_absolute = design.mde_absolute
+        daily_traffic = design.expected_daily_traffic
+        correct_answer = round(daily_traffic * mde_absolute)
+        tolerance = 10  # 10 conversions tolerance
+        is_correct = abs(user_answer - correct_answer) <= tolerance
+        return is_correct, f"Correct answer: {correct_answer} additional conversions per day"
+    
     
     return None, None
 
 def ask_single_design_question(question_num):
     """Ask a single design question based on question number."""
-    st.markdown(f"**Question {question_num} of 5**")
+    st.markdown(f"**Question {question_num} of 6**")
     
     if question_num == 1:
-        # Question 1: Relative lift calculation from MDE
+        # Question 1: Business's targeted MDE
+        st.markdown("**Based on the scenario, what is the business' targeted minimum detectable effect?**")
+        mde_absolute = st.number_input(
+            "MDE (percentage points):",
+            min_value=0.1,
+            max_value=50.0,
+            value=st.session_state.design_answers.get("mde_absolute", None),
+            step=0.1,
+            key="mde_absolute_input"
+        )
+        st.session_state.design_answers["mde_absolute"] = mde_absolute
+        
+        # Validate and show feedback
+        if mde_absolute is not None:
+            is_correct, correct_answer = validate_question_answer(1, mde_absolute)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_questions.add(1)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Look for the specific percentage point increase mentioned in the scenario")
+    
+    elif question_num == 2:
+        # Question 2: Target conversion rate calculation
+        st.markdown("**Based on the baseline rate and this targeted effect, what would a successful overall conversion rate be?**")
+        target_conversion_rate = st.number_input(
+            "Target conversion rate (%):",
+            min_value=0.1,
+            max_value=100.0,
+            value=st.session_state.design_answers.get("target_conversion_rate", None),
+            step=0.1,
+            key="target_conversion_rate_input"
+        )
+        st.session_state.design_answers["target_conversion_rate"] = target_conversion_rate
+        
+        # Validate and show feedback
+        if target_conversion_rate is not None:
+            is_correct, correct_answer = validate_question_answer(2, target_conversion_rate)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_questions.add(2)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Calculate: Baseline rate + MDE (absolute)")
+    
+    elif question_num == 3:
+        # Question 3: Relative lift calculation from MDE
         st.markdown("**Based on the scenario's baseline and the business' target minimum detectable effect, calculate the target relative lift**")
         st.markdown("*Hint: Calculate relative lift = (MDE / baseline rate) × 100%*")
         relative_lift_pct = st.number_input(
@@ -442,23 +515,23 @@ def ask_single_design_question(question_num):
         
         # Validate and show feedback
         if relative_lift_pct is not None:
-            is_correct, correct_answer = validate_question_answer(1, relative_lift_pct)
+            is_correct, correct_answer = validate_question_answer(3, relative_lift_pct)
             if is_correct is not None:
                 if is_correct:
                     st.success(f"✅ Correct! {correct_answer}")
-                    st.session_state.completed_questions.add(1)
+                    st.session_state.completed_questions.add(3)
                 else:
                     st.error(f"❌ Incorrect. {correct_answer}")
                     st.info("💡 Try again: (MDE / Baseline rate) × 100%")
     
-    elif question_num == 2:
-        # Question 2: Sample size calculation
+    elif question_num == 4:
+        # Question 4: Sample size calculation
         if "scenario_data" not in st.session_state or not st.session_state.scenario_data:
             st.error("❌ No scenario available. Please generate a scenario first.")
             return
         scenario = st.session_state.scenario_data
         design = scenario.design_params
-        st.markdown(f"**Based on the baseline rate and a target alpha of {design.alpha} and power of {design.power}, how large of a sample size would we need to detect the target effect?**")
+        st.markdown(f"**The business has decided to set an alpha of {design.alpha} and a power of {design.power}. Based on the baseline conversion rate, how large of a sample size will we need to detect the targeted effect?**")
         
         # Add helpful resources and formula
         st.markdown("**📚 Resources:**")
@@ -494,18 +567,24 @@ def ask_single_design_question(question_num):
         
         # Validate and show feedback
         if sample_size is not None:
-            is_correct, correct_answer = validate_question_answer(2, sample_size)
+            is_correct, correct_answer = validate_question_answer(4, sample_size)
             if is_correct is not None:
                 if is_correct:
                     st.success(f"✅ Correct! {correct_answer}")
-                    st.session_state.completed_questions.add(2)
+                    st.session_state.completed_questions.add(4)
                 else:
                     st.error(f"❌ Incorrect. {correct_answer}")
                     st.info("💡 Use two-proportion z-test sample size formula")
     
-    elif question_num == 3:
-        # Question 3: Experiment duration
-        st.markdown("**How long should this experiment run based on the daily traffic and required sample size?**")
+    elif question_num == 5:
+        # Question 5: Experiment duration
+        if "scenario_data" not in st.session_state or not st.session_state.scenario_data:
+            st.error("❌ No scenario available. Please generate a scenario first.")
+            return
+        scenario = st.session_state.scenario_data
+        daily_traffic = scenario.design_params.expected_daily_traffic
+        
+        st.markdown(f"**The business expects {daily_traffic:,} visitors per day. How long should this experiment run based on the daily traffic and required sample size?**")
         st.markdown("*Hint: Calculate based on daily traffic and the sample size you calculated*")
         duration_days = st.number_input(
             "Duration (days):",
@@ -515,21 +594,23 @@ def ask_single_design_question(question_num):
             step=1,
             key="duration_input"
         )
+        
+        # Update session state immediately
         st.session_state.design_answers["experiment_duration_days"] = duration_days
         
-        # Validate and show feedback
+        # Validate and show feedback only if user has entered a value
         if duration_days is not None:
-            is_correct, correct_answer = validate_question_answer(3, duration_days)
+            is_correct, correct_answer = validate_question_answer(5, duration_days)
             if is_correct is not None:
                 if is_correct:
                     st.success(f"✅ Correct! {correct_answer}")
-                    st.session_state.completed_questions.add(3)
+                    st.session_state.completed_questions.add(5)
                 else:
                     st.error(f"❌ Incorrect. {correct_answer}")
                     st.info("💡 Calculate: Required sample size ÷ Daily traffic")
     
-    elif question_num == 4:
-        # Question 4: Business Impact Calculation
+    elif question_num == 6:
+        # Question 6: Business Impact Calculation
         st.markdown("**How many additional conversions per day would this experiment detect if successful?**")
         st.markdown("*Hint: Calculate based on daily traffic and the absolute lift*")
         additional_conversions = st.number_input(
@@ -541,21 +622,18 @@ def ask_single_design_question(question_num):
             key="additional_conversions_input"
         )
         st.session_state.design_answers["additional_conversions_per_day"] = additional_conversions
+        
+        # Validate and show feedback
+        if additional_conversions is not None:
+            is_correct, correct_answer = validate_question_answer(6, additional_conversions)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_questions.add(6)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Calculate: Daily traffic × MDE (absolute)")
     
-    elif question_num == 5:
-        # Question 5: Power Analysis
-        st.markdown("**Is 80% statistical power sufficient for this business decision?**")
-        power_sufficient = st.selectbox(
-            "Choose the best answer:",
-            [
-                "Yes, 80% is standard and sufficient for most business decisions",
-                "No, we should use 90% power for important business decisions",
-                "It depends on the business risk tolerance and cost of the experiment",
-                "Power doesn't matter for business decisions, only statistical significance"
-            ],
-            key="power_sufficient_input"
-        )
-        st.session_state.design_answers["power_sufficient"] = power_sufficient
 
 def ask_experiment_sizing_questions():
     """Ask experiment sizing questions first."""
@@ -765,25 +843,56 @@ def score_design_answers(user_answers, scenario_data, sample_size_result):
     daily_traffic = scenario_data.design_params.expected_daily_traffic
     correct_additional_conversions = round(daily_traffic * (baseline * target_lift))
     
-    # Correct multiple choice answer
-    correct_power_sufficient = "It depends on the business risk tolerance and cost of the experiment"
     
     scores = {}
     total_score = 0
     max_score = 6
     
-    # Question 1: Target treatment conversion rate
-    correct_treatment_rate = (baseline + (baseline * target_lift)) * 100  # Convert to percentage
-    user_treatment_rate = user_answers.get("target_treatment_rate", 0)
-    if abs(user_treatment_rate - correct_treatment_rate) <= 0.5:  # Allow 0.5% tolerance
-        st.success(f"✅ Target treatment rate: {user_treatment_rate:.1f}% (Correct: {correct_treatment_rate:.1f}%)")
-        scores["target_treatment_rate"] = {"correct": True, "user": user_treatment_rate, "correct": correct_treatment_rate}
+    # Question 1: Business's targeted MDE
+    correct_mde_absolute = scenario_data.design_params.mde_absolute * 100  # Convert to percentage points
+    user_mde_absolute = user_answers.get("mde_absolute", 0)
+    if abs(user_mde_absolute - correct_mde_absolute) <= 0.5:  # Allow 0.5pp tolerance
+        st.success(f"✅ MDE (absolute): {user_mde_absolute:.1f}pp (Correct: {correct_mde_absolute:.1f}pp)")
+        scores["mde_absolute"] = {"correct": True, "user": user_mde_absolute, "correct": correct_mde_absolute}
         total_score += 1
     else:
-        st.error(f"❌ Target treatment rate: {user_treatment_rate:.1f}% (Correct: {correct_treatment_rate:.1f}%)")
-        scores["target_treatment_rate"] = {"correct": False, "user": user_treatment_rate, "correct": correct_treatment_rate}
+        st.error(f"❌ MDE (absolute): {user_mde_absolute:.1f}pp (Correct: {correct_mde_absolute:.1f}pp)")
+        scores["mde_absolute"] = {"correct": False, "user": user_mde_absolute, "correct": correct_mde_absolute}
     
-    # Question 2: Duration
+    # Question 2: Target conversion rate
+    correct_target_rate = (baseline + scenario_data.design_params.mde_absolute) * 100  # Convert to percentage
+    user_target_rate = user_answers.get("target_conversion_rate", 0)
+    if abs(user_target_rate - correct_target_rate) <= 0.5:  # Allow 0.5% tolerance
+        st.success(f"✅ Target conversion rate: {user_target_rate:.1f}% (Correct: {correct_target_rate:.1f}%)")
+        scores["target_conversion_rate"] = {"correct": True, "user": user_target_rate, "correct": correct_target_rate}
+        total_score += 1
+    else:
+        st.error(f"❌ Target conversion rate: {user_target_rate:.1f}% (Correct: {correct_target_rate:.1f}%)")
+        scores["target_conversion_rate"] = {"correct": False, "user": user_target_rate, "correct": correct_target_rate}
+    
+    # Question 3: Target treatment conversion rate (relative lift)
+    correct_treatment_rate = (baseline + (baseline * target_lift)) * 100  # Convert to percentage
+    user_treatment_rate = user_answers.get("relative_lift_pct", 0)
+    correct_relative_lift = (scenario_data.design_params.mde_absolute / baseline) * 100
+    if abs(user_treatment_rate - correct_relative_lift) <= 2.0:  # Allow 2% tolerance
+        st.success(f"✅ Relative lift: {user_treatment_rate:.1f}% (Correct: {correct_relative_lift:.1f}%)")
+        scores["relative_lift_pct"] = {"correct": True, "user": user_treatment_rate, "correct": correct_relative_lift}
+        total_score += 1
+    else:
+        st.error(f"❌ Relative lift: {user_treatment_rate:.1f}% (Correct: {correct_relative_lift:.1f}%)")
+        scores["relative_lift_pct"] = {"correct": False, "user": user_treatment_rate, "correct": correct_relative_lift}
+    
+    # Question 4: Sample size
+    user_sample_size = user_answers.get("sample_size_per_group", 0)
+    if abs(user_sample_size - correct_sample_size) <= 100:  # Allow 100 users tolerance
+        st.success(f"✅ Sample size: {user_sample_size:,} users per group (Correct: {correct_sample_size:,})")
+        scores["sample_size"] = {"correct": True, "user": user_sample_size, "correct": correct_sample_size}
+        total_score += 1
+    else:
+        st.error(f"❌ Sample size: {user_sample_size:,} users per group (Correct: {correct_sample_size:,})")
+        scores["sample_size"] = {"correct": False, "user": user_sample_size, "correct": correct_sample_size}
+    
+    # Question 5: Duration
     user_duration = user_answers.get("experiment_duration_days", 0)
     if abs(user_duration - correct_duration) <= 2:  # Allow 2 days tolerance
         st.success(f"✅ Duration: {user_duration} days (Correct: {correct_duration} days)")
@@ -793,46 +902,17 @@ def score_design_answers(user_answers, scenario_data, sample_size_result):
         st.error(f"❌ Duration: {user_duration} days (Correct: {correct_duration} days)")
         scores["duration"] = {"correct": False, "user": user_duration, "correct": correct_duration}
     
-    # Question 3: Absolute lift
-    user_absolute_lift = user_answers.get("absolute_lift_pp", 0)
-    if abs(user_absolute_lift - correct_absolute_lift) <= 0.5:  # Allow 0.5pp tolerance
-        st.success(f"✅ Absolute lift: {user_absolute_lift}pp (Correct: {correct_absolute_lift}pp)")
-        scores["absolute_lift"] = {"correct": True, "user": user_absolute_lift, "correct": correct_absolute_lift}
-        total_score += 1
-    else:
-        st.error(f"❌ Absolute lift: {user_absolute_lift}pp (Correct: {correct_absolute_lift}pp)")
-        scores["absolute_lift"] = {"correct": False, "user": user_absolute_lift, "correct": correct_absolute_lift}
-    
-    # Question 4: Power sufficient
-    user_power_sufficient = user_answers.get("power_sufficient", "")
-    if user_power_sufficient == correct_power_sufficient:
-        st.success(f"✅ Power analysis: Correct!")
-        scores["power_sufficient"] = {"correct": True, "user": user_power_sufficient, "correct": correct_power_sufficient}
-        total_score += 1
-    else:
-        st.error(f"❌ Power analysis: {user_power_sufficient}")
-        st.info(f"💡 Correct answer: {correct_power_sufficient}")
-        scores["power_sufficient"] = {"correct": False, "user": user_power_sufficient, "correct": correct_power_sufficient}
-    
-    # Question 5: Additional conversions
+    # Question 6: Additional conversions per day
     user_additional_conversions = user_answers.get("additional_conversions_per_day", 0)
     if abs(user_additional_conversions - correct_additional_conversions) <= 10:  # Allow 10 conversions tolerance
-        st.success(f"✅ Additional conversions: {user_additional_conversions:,}/day (Correct: {correct_additional_conversions:,}/day)")
+        st.success(f"✅ Additional conversions: {user_additional_conversions} per day (Correct: {correct_additional_conversions})")
         scores["additional_conversions"] = {"correct": True, "user": user_additional_conversions, "correct": correct_additional_conversions}
         total_score += 1
     else:
-        st.error(f"❌ Additional conversions: {user_additional_conversions:,}/day (Correct: {correct_additional_conversions:,}/day)")
+        st.error(f"❌ Additional conversions: {user_additional_conversions} per day (Correct: {correct_additional_conversions})")
         scores["additional_conversions"] = {"correct": False, "user": user_additional_conversions, "correct": correct_additional_conversions}
     
-    # Question 6: Sample size
-    user_sample_size = user_answers.get("sample_size_per_group", 0)
-    if abs(user_sample_size - correct_sample_size) <= 50:  # Allow some tolerance
-        st.success(f"✅ Sample size: {user_sample_size:,} (Correct: {correct_sample_size:,})")
-        scores["sample_size"] = {"correct": True, "user": user_sample_size, "correct": correct_sample_size}
-        total_score += 1
-    else:
-        st.error(f"❌ Sample size: {user_sample_size:,} (Correct: {correct_sample_size:,})")
-        scores["sample_size"] = {"correct": False, "user": user_sample_size, "correct": correct_sample_size}
+    
     
     percentage = (total_score / max_score) * 100
     st.markdown(f"**Score: {total_score}/{max_score} ({percentage:.1f}%)**")
@@ -845,7 +925,7 @@ def main():
     initialize_session_state()
     
     # Header
-    st.markdown('<div class="main-header">30 Day ABs</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">30 Day A/Bs</div>', unsafe_allow_html=True)
     
     # Sidebar
     with st.sidebar:
@@ -927,7 +1007,7 @@ def main():
     
     # Main content
     if not st.session_state.scenario_data:
-        st.markdown("### 👋 Welcome to 30 Day ABs!")
+        st.markdown("### 👋 Welcome to 30 Day A/Bs!")
         st.markdown("""
         This tool helps you practice AB test analysis for interviews by:
         
@@ -961,6 +1041,12 @@ def main():
     elif st.session_state.current_step == "design":
         # Show scenario first
         display_scenario(st.session_state.scenario_data)
+        
+        # Add notebook download option
+        st.markdown("### 📓 Design Framework")
+        st.markdown("Want to work through the calculations offline? Download the Jupyter notebook framework:")
+        create_notebook_download()
+        
         st.markdown("---")  # Add separator
         
         # Show all questions vertically on the same page
@@ -972,7 +1058,7 @@ def main():
             else:
                 # Show locked question message
                 st.markdown(f"### 🎯 Step 2: Design the Experiment")
-                st.markdown(f"**Question {q_num} of 5**")
+                st.markdown(f"**Question {q_num} of 6**")
                 st.warning(f"⚠️ Please complete Question {q_num - 1} correctly before proceeding to Question {q_num}")
                 st.info("💡 Go back and answer the previous question correctly to unlock this question")
                 st.markdown("---")
@@ -987,13 +1073,13 @@ def main():
                 st.rerun()
         
         with col2:
-            if st.session_state.current_question < 5:
+            if st.session_state.current_question < 6:
                 # Show Next Question button (user can proceed even if current question is wrong)
                 if st.button("➡️ Next Question", type="primary"):
                     st.session_state.current_question += 1
                     st.rerun()
             else:
-                # For question 5, check if it's completed before allowing submit
+                # For question 6, check if it's completed before allowing submit
                 if st.session_state.current_question in st.session_state.completed_questions:
                     if st.button("✅ Submit All Answers", type="primary"):
                         # Score the design answers
