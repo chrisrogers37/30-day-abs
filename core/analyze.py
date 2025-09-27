@@ -435,6 +435,36 @@ def _generate_recommendation(significant: bool, p_value: float,
             return "No significant difference detected. Consider alternative approaches or hypothesis refinement."
 
 
+def make_rollout_decision(
+    sim_result: SimResult, 
+    analysis_result: AnalysisResult,
+    business_target_absolute: float
+) -> str:
+    """
+    Make rollout decision based on confidence interval vs business target.
+    
+    Args:
+        sim_result: Simulation results with observed lift
+        analysis_result: Statistical analysis with CI bounds
+        business_target_absolute: Business's target absolute lift (e.g., 0.03 for 3%)
+        
+    Returns:
+        Decision: "proceed_with_confidence", "proceed_with_caution", "do_not_proceed"
+    """
+    ci_lower, ci_upper = analysis_result.confidence_interval
+    
+    # Check if business target is achievable within CI
+    if ci_upper < business_target_absolute:
+        # Upper bound is below target - target not achievable
+        return "do_not_proceed"
+    elif ci_lower >= business_target_absolute:
+        # Lower bound is above target - target is very likely achievable
+        return "proceed_with_confidence"
+    else:
+        # Target is within CI bounds - proceed with caution
+        return "proceed_with_caution"
+
+
 def calculate_business_impact(sim_result: SimResult, 
                             revenue_per_conversion: Optional[float] = None,
                             monthly_traffic: Optional[int] = None) -> BusinessImpact:

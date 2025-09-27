@@ -12,34 +12,57 @@ from typing import Dict, List, Optional, Tuple
 from .types import DesignParams, SimResult, Allocation
 
 
-def simulate_trial(params: DesignParams, true_rates: Dict[str, float], 
-                  seed: int = 42) -> SimResult:
+def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
     """
     Simulate a complete AB test trial with user-level data.
     
+    This function generates realistic treatment effects that may or may not achieve
+    the target lift, allowing for both successful and unsuccessful experiments.
+    
     Args:
         params: Design parameters including allocation and traffic
-        true_rates: Dictionary with 'control' and 'treatment' conversion rates
         seed: Random seed for reproducibility
         
     Returns:
         SimResult with conversion counts and user-level data
         
     Raises:
-        ValueError: If true_rates are invalid or inconsistent
+        ValueError: If design parameters are invalid
     """
-    # Validate true rates
-    if 'control' not in true_rates or 'treatment' not in true_rates:
-        raise ValueError("true_rates must contain 'control' and 'treatment' keys")
-    
-    control_rate = true_rates['control']
-    treatment_rate = true_rates['treatment']
-    
-    if not (0 <= control_rate <= 1 and 0 <= treatment_rate <= 1):
-        raise ValueError("Conversion rates must be between 0 and 1")
-    
     # Set random seed for reproducibility
     random.seed(seed)
+    
+    # Calculate true rates with realistic variation
+    # Control rate varies around baseline due to sampling variability
+    # This reflects the reality that observed rates differ from true population rates
+    baseline_rate = params.baseline_conversion_rate
+    
+    # Add realistic variation to control rate (±10% of baseline)
+    control_variation = random.uniform(-0.1, 0.1)  # ±10% variation
+    control_rate = baseline_rate * (1 + control_variation)
+    control_rate = max(0.001, min(0.999, control_rate))  # Keep within bounds
+    
+    # Treatment rate varies around the target lift with realistic uncertainty
+    # This allows for both successful and unsuccessful experiments
+    target_treatment_rate = control_rate * (1 + params.target_lift_pct)
+    
+    # Add realistic variation to treatment effect
+    # 70% chance of achieving target lift, 20% chance of partial success, 10% chance of failure
+    effect_variation = random.choices(
+        [1.0, 0.5, 0.0, -0.3],  # Full effect, partial effect, no effect, negative effect
+        weights=[0.7, 0.2, 0.08, 0.02]  # Probabilities
+    )[0]
+    
+    # Calculate actual treatment rate with variation
+    actual_lift_pct = params.target_lift_pct * effect_variation
+    treatment_rate = control_rate * (1 + actual_lift_pct)
+    
+    # Ensure treatment rate stays within valid bounds
+    treatment_rate = max(0.001, min(0.999, treatment_rate))
+    
+    # Validate rates
+    if not (0 <= control_rate <= 1 and 0 <= treatment_rate <= 1):
+        raise ValueError("Conversion rates must be between 0 and 1")
     
     # Calculate sample sizes based on allocation
     # For now, use a simple approach - in production, this would use the calculated sample size

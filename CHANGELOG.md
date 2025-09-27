@@ -77,6 +77,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error Handling**: Robust file handling for notebook template delivery
 - **Code Organization**: Clean separation of concerns between web app and offline framework
 
+## [1.2.0] - 2025-01-15
+
+### Added
+- **Question 7 - Rollout Decision**: New analysis question for interpreting confidence intervals vs business targets
+- **`make_rollout_decision()` Function**: CI-based go/no-go decision logic with three outcomes
+- **Enhanced Analysis Section**: Complete rebuild with 7 progressive questions
+- **Core Validation Module**: Centralized answer validation and scoring system
+- **Core Scoring Module**: Answer key generation and comprehensive quiz result management
+- **Analysis Notebook Template**: Downloadable Jupyter notebook with all 7 analysis questions
+- **Business Target Integration**: LLM scenario business targets used for rollout decisions
+- **Progressive Question Display**: Analysis questions appear one by one like design section
+
+### Changed
+- **Architecture Refactoring**: Moved statistical calculations, validation, and scoring from UI to core modules
+- **Analysis Question Flow**: Rebuilt from scratch with proper progressive display
+- **Question Count**: Analysis section expanded from 6 to 7 questions
+- **Validation System**: Centralized validation logic in `core/validation.py`
+- **Scoring System**: Centralized scoring logic in `core/scoring.py`
+- **UI Simplification**: UI layer now focuses on question flow and user interaction
+- **Data Download Page**: Renovated with loading animation and improved messaging
+
+### Improved
+- **Separation of Concerns**: Clear `llm -> core -> ui` architecture
+- **Code Maintainability**: Eliminated duplicated statistical calculations
+- **Educational Value**: Complete analysis workflow from data to business decision
+- **User Experience**: Consistent question flow between design and analysis sections
+- **Statistical Accuracy**: Fixed p-value validation bug with duplicate dictionary keys
+- **Business Decision Making**: Realistic rollout recommendations based on CI vs targets
+
+### Technical Improvements
+- **Core Module Enhancement**: Added `make_rollout_decision()` to `core/analyze.py`
+- **Validation Updates**: Support for 7 analysis questions with business target integration
+- **Scoring Updates**: Proper handling of rollout decision validation with exact match
+- **Notebook Templates**: Updated analysis notebook with Question 7 decision logic
+- **Error Handling**: Fixed validation issues and improved error messages
+- **Type Safety**: Enhanced type hints and validation throughout core modules
+
+### Fixed
+- **P-value Validation Bug**: Fixed duplicate dictionary key issue in scoring
+- **Question Numbering**: Consistent numbering across all sections
+- **Navigation Logic**: Proper bounds checking for question navigation
+- **Validation Tolerances**: Appropriate tolerances for different question types
+- **Business Target Integration**: Proper use of LLM scenario business targets
+
+### Documentation
+- **Core README**: Comprehensive update documenting all new modules and functions
+- **Function Status**: Clear documentation of which functions are used vs available
+- **Usage Examples**: Updated examples showing new validation and scoring workflows
+- **Architecture Documentation**: Clear explanation of separation of concerns
+
 ## [Unreleased]
 
 ### Planned
