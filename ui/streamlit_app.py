@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Streamlit app for 30 Day A/Bs - AB Test Interview Practice.
+Streamlit app for 30 Day A/Bs - A/B Test Interview Practice.
 
 This app allows users to:
-1. Generate realistic AB test scenarios
+1. Generate realistic A/B test scenarios
 2. Download simulated data as CSV
 3. Answer analysis questions
 4. Get scored feedback on their responses
@@ -44,6 +44,8 @@ from core.simulate import simulate_trial, export_user_data_csv
 from core.analyze import analyze_results
 from core.design import compute_sample_size
 from core.types import DesignParams, Allocation
+from core.validation import validate_design_answer, validate_analysis_answer, score_design_answers, score_analysis_answers
+from core.scoring import generate_design_answer_key, generate_analysis_answer_key, create_complete_quiz_result
 from schemas.scenario import ScenarioResponseDTO
 
 # Page configuration
@@ -94,6 +96,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Configuration constants
+MAX_DESIGN_QUESTIONS = 6
+MAX_ANALYSIS_QUESTIONS = 7
+
 def initialize_session_state():
     """Initialize session state variables."""
     if 'scenario_data' not in st.session_state:
@@ -108,25 +114,25 @@ def initialize_session_state():
         st.session_state.design_answers = {}
     if 'design_scoring_results' not in st.session_state:
         st.session_state.design_scoring_results = None
-    if 'sizing_answers' not in st.session_state:
-        st.session_state.sizing_answers = {}
     if 'analysis_answers' not in st.session_state:
         st.session_state.analysis_answers = {}
     if 'completed_questions' not in st.session_state:
         st.session_state.completed_questions = set()
-    if 'sizing_scoring_results' not in st.session_state:
-        st.session_state.sizing_scoring_results = None
     if 'analysis_scoring_results' not in st.session_state:
         st.session_state.analysis_scoring_results = None
     if 'current_step' not in st.session_state:
-        st.session_state.current_step = "scenario"  # scenario -> design -> data_download -> sizing -> analysis
+        st.session_state.current_step = "scenario"  # scenario -> design -> data_download -> analysis
     if 'current_question' not in st.session_state:
         st.session_state.current_question = 1  # Track which design question we're on
+    if 'current_analysis_question' not in st.session_state:
+        st.session_state.current_analysis_question = 1  # Track which analysis question we're on
+    if 'completed_analysis_questions' not in st.session_state:
+        st.session_state.completed_analysis_questions = set()
     if 'design_answers' not in st.session_state:
         st.session_state.design_answers = {}  # Store answers as we go
 
 def generate_scenario():
-    """Generate a new AB test scenario."""
+    """Generate a new A/B test scenario."""
     logger.info("🚀 Starting scenario generation...")
     
     with st.spinner("🤖 Generating scenario with LLM..."):
@@ -245,22 +251,15 @@ def run_simulation(scenario_dto):
             
             logger.info(f"📊 Design parameters - Baseline: {design_params.baseline_conversion_rate:.3f}, Target lift: {design_params.target_lift_pct:.1%}, Alpha: {design_params.alpha}, Power: {design_params.power}")
             
-            # True rates from LLM simulation hints
-            simulation_hints = scenario_dto.llm_expected.simulation_hints
-            true_rates = {
-                "control": simulation_hints.control_conversion_rate,
-                "treatment": simulation_hints.treatment_conversion_rate
-            }
-            
-            logger.info(f"🎯 True rates - Control: {true_rates['control']:.3f}, Treatment: {true_rates['treatment']:.3f}")
-            
             # Calculate sample size
             logger.info("📏 Calculating required sample size...")
             sample_size_result = compute_sample_size(core_design_params)
             
-            # Run simulation
+            # Run simulation (core now calculates true rates internally with realistic variation)
             logger.info("🔄 Running simulation with seed=42...")
-            sim_result = simulate_trial(core_design_params, true_rates, seed=42)
+            sim_result = simulate_trial(core_design_params, seed=42)
+            
+            logger.info(f"🎯 Actual rates - Control: {sim_result.control_rate:.3f}, Treatment: {sim_result.treatment_rate:.3f}")
             
             # Run analysis
             logger.info("🔍 Running statistical analysis...")
@@ -357,99 +356,66 @@ def create_csv_download(sim_result):
         
         st.info(f"📊 CSV contains {len(sim_result.user_data):,} user records with conversion status, session duration, and page views.")
 
+def create_analysis_notebook_download():
+    """Create download button for analysis notebook template."""
+    import os
+    notebook_path = "notebooks/ab_experimental_analysis_template.ipynb"
+    
+    if os.path.exists(notebook_path):
+        with open(notebook_path, "rb") as file:
+            notebook_data = file.read()
+        
+        st.download_button(
+            label="📓 Download Analysis Notebook Template",
+            data=notebook_data,
+            file_name="ab_experimental_analysis_template.ipynb",
+            mime="application/json",
+            help="Download Jupyter notebook template for analyzing the experimental data"
+        )
+    else:
+        st.error("Analysis notebook template not found.")
+
 def validate_question_answer(question_num, user_answer):
     """Validate a single question answer and return feedback."""
     if not st.session_state.scenario_data:
         return None, None
     
     design = st.session_state.scenario_data.design_params
-    baseline = design.baseline_conversion_rate
-    target_lift = design.target_lift_pct
+    allocation = Allocation(control=0.5, treatment=0.5)
+    core_design_params = DesignParams(
+        baseline_conversion_rate=design.baseline_conversion_rate,
+        target_lift_pct=design.target_lift_pct,
+        alpha=design.alpha,
+        power=design.power,
+        allocation=allocation,
+        expected_daily_traffic=design.expected_daily_traffic
+    )
+    sample_size_result = compute_sample_size(core_design_params)
     
-    if question_num == 1:
-        # Question 1: Business's targeted MDE
-        mde_absolute = design.mde_absolute  # MDE in absolute terms from scenario
-        correct_answer = mde_absolute * 100  # Convert to percentage points
-        tolerance = 0.5  # 0.5 percentage points tolerance
-        is_correct = abs(user_answer - correct_answer) <= tolerance
-        return is_correct, f"Correct answer: {correct_answer:.1f} percentage points"
+    # Use core validation with scenario's mde_absolute
+    mde_absolute = design.mde_absolute
+    validation_result = validate_design_answer(question_num, user_answer, core_design_params, sample_size_result, mde_absolute)
+    return validation_result.is_correct, validation_result.feedback
+
+def validate_analysis_question_answer(question_num, user_answer):
+    """Validate a single analysis question answer and return feedback."""
+    if not st.session_state.simulation_results:
+        return None, None
     
-    elif question_num == 2:
-        # Question 2: Target conversion rate calculation
-        mde_absolute = design.mde_absolute  # MDE in absolute terms from scenario
-        correct_answer = (baseline + mde_absolute) * 100  # Convert to percentage
-        tolerance = 0.5  # 0.5% tolerance
-        is_correct = abs(user_answer - correct_answer) <= tolerance
-        return is_correct, f"Correct answer: {correct_answer:.1f}%"
+    sim_result = st.session_state.simulation_results
     
-    elif question_num == 3:
-        # Question 3: Relative lift calculation from MDE
-        mde_absolute = design.mde_absolute  # MDE in absolute terms from scenario
-        correct_answer = (mde_absolute / baseline) * 100  # Convert to relative lift percentage
-        tolerance = 2.0  # 2% tolerance for relative lift
-        is_correct = abs(user_answer - correct_answer) <= tolerance
-        return is_correct, f"Correct answer: {correct_answer:.1f}%"
+    # Get business target for Question 7
+    business_target_absolute = None
+    if question_num == 7 and st.session_state.scenario_data:
+        business_target_absolute = st.session_state.scenario_data.scenario.llm_expected.mde_absolute
     
-    elif question_num == 4:
-        # Question 4: Sample size calculation
-        from core.design import compute_sample_size
-        from core.types import DesignParams, Allocation
-        
-        # Create DesignParams object
-        design_params = DesignParams(
-            baseline_conversion_rate=baseline,
-            target_lift_pct=target_lift,
-            alpha=design.alpha,
-            power=design.power,
-            allocation=Allocation(0.5, 0.5),
-            expected_daily_traffic=design.expected_daily_traffic
-        )
-        
-        sample_size_result = compute_sample_size(design_params)
-        correct_sample_size = sample_size_result.per_arm
-        tolerance = 100  # 100 users tolerance to account for calculator differences
-        is_correct = abs(user_answer - correct_sample_size) <= tolerance
-        return is_correct, f"Correct answer: {correct_sample_size:,} users per group (±{tolerance} tolerance for calculator differences)"
-    
-    elif question_num == 5:
-        # Question 5: Experiment duration
-        daily_traffic = design.expected_daily_traffic
-        # Calculate required sample size for correct duration
-        from core.design import compute_sample_size
-        from core.types import DesignParams, Allocation
-        
-        # Create DesignParams object
-        design_params = DesignParams(
-            baseline_conversion_rate=baseline,
-            target_lift_pct=target_lift,
-            alpha=design.alpha,
-            power=design.power,
-            allocation=Allocation(0.5, 0.5),
-            expected_daily_traffic=design.expected_daily_traffic
-        )
-        
-        sample_size_result = compute_sample_size(design_params)
-        required_sample_size = sample_size_result.per_arm * 2  # Total sample size
-        correct_duration = max(1, round(required_sample_size / daily_traffic))
-        tolerance = 1  # 1 day tolerance
-        is_correct = abs(user_answer - correct_duration) <= tolerance
-        return is_correct, f"Correct answer: {correct_duration} days"
-    
-    elif question_num == 6:
-        # Question 6: Business Impact Calculation
-        mde_absolute = design.mde_absolute
-        daily_traffic = design.expected_daily_traffic
-        correct_answer = round(daily_traffic * mde_absolute)
-        tolerance = 10  # 10 conversions tolerance
-        is_correct = abs(user_answer - correct_answer) <= tolerance
-        return is_correct, f"Correct answer: {correct_answer} additional conversions per day"
-    
-    
-    return None, None
+    # Use core validation
+    validation_result = validate_analysis_answer(question_num, user_answer, sim_result, business_target_absolute)
+    return validation_result.is_correct, validation_result.feedback
 
 def ask_single_design_question(question_num):
     """Ask a single design question based on question number."""
-    st.markdown(f"**Question {question_num} of 6**")
+    st.markdown(f"**Question {question_num} of {MAX_DESIGN_QUESTIONS}**")
     
     if question_num == 1:
         # Question 1: Business's targeted MDE
@@ -635,173 +601,281 @@ def ask_single_design_question(question_num):
                     st.info("💡 Calculate: Daily traffic × MDE (absolute)")
     
 
-def ask_experiment_sizing_questions():
-    """Ask experiment sizing questions first."""
-    st.markdown("### 🎯 Experiment Sizing Questions")
-    st.markdown("Based on the scenario above, answer these sizing questions:")
+def ask_single_analysis_question(question_num):
+    """Ask a single analysis question based on question number."""
+    st.markdown(f"**Question {question_num} of {MAX_ANALYSIS_QUESTIONS}**")
     
-    questions = {
-        "baseline_rate": "What is the baseline conversion rate? (round to 3 decimal places)",
-        "target_lift": "What is the target lift (MDE) for this experiment? (round to 3 decimal places)",
-        "alpha": "What significance level (α) should be used? (round to 3 decimal places)",
-        "power": "What statistical power is desired? (round to 3 decimal places)",
-        "daily_traffic": "What is the expected daily traffic? (integer)",
-        "sample_size_per_arm": "What sample size per arm is needed? (integer)"
-    }
+    if question_num == 1:
+        # Question 1: Control conversion rate
+        st.markdown("**What is the conversion rate for the control group?**")
+        st.markdown("*Hint: Calculate conversions ÷ total users in the control group*")
+        
+        control_rate = st.number_input(
+            "Control conversion rate (%):",
+            min_value=0.0,
+            max_value=100.0,
+            value=st.session_state.analysis_answers.get("control_conversion_rate", None),
+            step=0.001,
+            format="%.3f",
+            key="control_rate_input",
+            help="Enter as percentage (e.g., 2.5 for 2.5%)"
+        )
+        st.session_state.analysis_answers["control_conversion_rate"] = control_rate
+        
+        # Validate and show feedback
+        if control_rate is not None:
+            is_correct, correct_answer = validate_analysis_question_answer(1, control_rate)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_analysis_questions.add(1)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Look at the control group data in the CSV file")
+    
+    elif question_num == 2:
+        # Question 2: Treatment conversion rate
+        st.markdown("**What is the conversion rate for the treatment group?**")
+        st.markdown("*Hint: Calculate conversions ÷ total users in the treatment group*")
+        
+        treatment_rate = st.number_input(
+            "Treatment conversion rate (%):",
+            min_value=0.0,
+            max_value=100.0,
+            value=st.session_state.analysis_answers.get("treatment_conversion_rate", None),
+            step=0.001,
+            format="%.3f",
+            key="treatment_rate_input",
+            help="Enter as percentage (e.g., 2.7 for 2.7%)"
+        )
+        st.session_state.analysis_answers["treatment_conversion_rate"] = treatment_rate
+        
+        # Validate and show feedback
+        if treatment_rate is not None:
+            is_correct, correct_answer = validate_analysis_question_answer(2, treatment_rate)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_analysis_questions.add(2)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Look at the treatment group data in the CSV file")
+    
+    elif question_num == 3:
+        # Question 3: Absolute lift
+        st.markdown("**What is the absolute lift between treatment and control groups?**")
+        st.markdown("*Hint: Calculate treatment rate - control rate (in percentage points)*")
+        
+        absolute_lift = st.number_input(
+            "Absolute lift (percentage points):",
+            min_value=-100.0,
+            max_value=100.0,
+            value=st.session_state.analysis_answers.get("absolute_lift", None),
+            step=0.001,
+            format="%.3f",
+            key="absolute_lift_input",
+            help="Enter as percentage points (e.g., 0.2 for 0.2 percentage points)"
+        )
+        st.session_state.analysis_answers["absolute_lift"] = absolute_lift
+        
+        # Validate and show feedback
+        if absolute_lift is not None:
+            is_correct, correct_answer = validate_analysis_question_answer(3, absolute_lift)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_analysis_questions.add(3)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Calculate: Treatment Rate - Control Rate")
+    
+    elif question_num == 4:
+        # Question 4: Relative lift
+        st.markdown("**What is the relative lift between treatment and control groups?**")
+        st.markdown("*Hint: Calculate (treatment rate - control rate) ÷ control rate × 100*")
+        
+        relative_lift = st.number_input(
+            "Relative lift (%):",
+            min_value=-1000.0,
+            max_value=1000.0,
+            value=st.session_state.analysis_answers.get("relative_lift", None),
+            step=0.1,
+            format="%.1f",
+            key="relative_lift_input",
+            help="Enter as percentage (e.g., 8.0 for 8.0%)"
+        )
+        st.session_state.analysis_answers["relative_lift"] = relative_lift
+        
+        # Validate and show feedback
+        if relative_lift is not None:
+            is_correct, correct_answer = validate_analysis_question_answer(4, relative_lift)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_analysis_questions.add(4)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Calculate: (Treatment Rate - Control Rate) ÷ Control Rate × 100")
+    
+    elif question_num == 5:
+        # Question 5: Statistical significance (P-value)
+        st.markdown("**What is the p-value for the difference between treatment and control groups?**")
+        st.markdown("*Hint: Perform a two-proportion z-test to determine statistical significance*")
+        
+        p_value = st.number_input(
+            "P-value:",
+            min_value=0.0,
+            max_value=1.0,
+            value=st.session_state.analysis_answers.get("p_value", None),
+            step=0.001,
+            format="%.3f",
+            key="p_value_input",
+            help="Enter as decimal (e.g., 0.023 for 2.3%)"
+        )
+        st.session_state.analysis_answers["p_value"] = p_value
+        
+        # Validate and show feedback
+        if p_value is not None:
+            is_correct, correct_answer = validate_analysis_question_answer(5, p_value)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_analysis_questions.add(5)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Use statsmodels.stats.proportion.proportions_ztest or scipy.stats")
+    
+    elif question_num == 6:
+        # Question 6: Confidence interval for difference
+        st.markdown("**What is the 95% confidence interval for the difference between treatment and control groups?**")
+        st.markdown("*Hint: Calculate the confidence interval for (treatment rate - control rate)*")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            ci_lower = st.number_input(
+                "Lower bound (%):",
+                min_value=-100.0,
+                max_value=100.0,
+                value=st.session_state.analysis_answers.get("ci_lower", None),
+                step=0.01,
+                format="%.2f",
+                key="ci_lower_input",
+                help="Enter as percentage (e.g., 0.8 for 0.8%)"
+            )
+            st.session_state.analysis_answers["ci_lower"] = ci_lower
+        
+        with col2:
+            ci_upper = st.number_input(
+                "Upper bound (%):",
+                min_value=-100.0,
+                max_value=100.0,
+                value=st.session_state.analysis_answers.get("ci_upper", None),
+                step=0.01,
+                format="%.2f",
+                key="ci_upper_input",
+                help="Enter as percentage (e.g., 3.2 for 3.2%)"
+            )
+            st.session_state.analysis_answers["ci_upper"] = ci_upper
+        
+        # Validate and show feedback
+        if ci_lower is not None and ci_upper is not None:
+            is_correct, correct_answer = validate_analysis_question_answer(6, (ci_lower, ci_upper))
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_analysis_questions.add(6)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Calculate: (p1 - p2) ± z_α/2 × SE(p1 - p2)")
+    
+    elif question_num == 7:
+        # Question 7: Rollout decision
+        st.markdown("**Based on the confidence interval and business target, what is your rollout recommendation?**")
+        st.markdown("*Hint: Compare the confidence interval bounds to the business target lift*")
+        
+        # Get business target from scenario
+        business_target_pct = st.session_state.scenario_data.scenario.llm_expected.target_lift_pct * 100
+        business_target_absolute = st.session_state.scenario_data.scenario.llm_expected.mde_absolute * 100
+        
+        st.info(f"**Business Target:** {business_target_pct:.1f}% relative lift ({business_target_absolute:.2f}% absolute lift)")
+        
+        rollout_decision = st.selectbox(
+            "Rollout Decision:",
+            ["proceed_with_confidence", "proceed_with_caution", "do_not_proceed"],
+            format_func=lambda x: {
+                "proceed_with_confidence": "Proceed with Confidence",
+                "proceed_with_caution": "Proceed with Caution", 
+                "do_not_proceed": "Do Not Proceed"
+            }[x],
+            key="rollout_decision_input"
+        )
+        st.session_state.analysis_answers["rollout_decision"] = rollout_decision
+        
+        # Validate and show feedback
+        if rollout_decision:
+            is_correct, correct_answer = validate_analysis_question_answer(7, rollout_decision)
+            if is_correct is not None:
+                if is_correct:
+                    st.success(f"✅ Correct! {correct_answer}")
+                    st.session_state.completed_analysis_questions.add(7)
+                else:
+                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.info("💡 Consider: Is the business target achievable within the confidence interval?")
+
+def ask_data_analysis_questions():
+    """Ask data analysis questions after downloading the CSV."""
+    st.markdown("### 🔍 Data Analysis Questions")
+    st.markdown("After downloading and examining the CSV data, answer these questions:")
     
     answers = {}
     
-    for key, question in questions.items():
-        st.markdown(f'<div class="question-box">', unsafe_allow_html=True)
-        st.markdown(f"**Q: {question}**")
-        
-        if key in ["baseline_rate", "target_lift", "alpha", "power"]:
-            answer = st.text_input(f"Answer for {key}:", key=f"input_{key}", placeholder="e.g., 0.025")
-        elif key in ["daily_traffic", "sample_size_per_arm"]:
-            answer = st.text_input(f"Answer for {key}:", key=f"input_{key}", placeholder="e.g., 10000")
-        
-        answers[key] = answer
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Question 1: Control conversion rate
+    st.markdown(f"**Question 1: What is the conversion rate for the control group?**")
+    st.markdown("*Hint: Calculate conversions ÷ total users in the control group*")
     
-    return answers
-
-def ask_analysis_questions():
-    """Ask analysis questions after seeing the data."""
-    st.markdown("### 🤔 Data Analysis Questions")
-    st.markdown("After analyzing the simulated data, answer these questions:")
-    
-    questions = {
-        "p_value": "What is the p-value for this test? (round to 3 decimal places)",
-        "significant": "Is the result statistically significant at α=0.05? (yes/no)",
-        "business_impact": "What is the business impact of this result? (high/medium/low)",
-        "recommendation": "What is your recommendation for next steps? (rollout/do_not_rollout/inconclusive)",
-        "sample_size_adequate": "Is the sample size adequate for this test? (yes/no)",
-        "power_achieved": "What is the achieved power? (round to 3 decimal places)"
-    }
-    
-    answers = {}
-    
-    for key, question in questions.items():
-        st.markdown(f'<div class="question-box">', unsafe_allow_html=True)
-        st.markdown(f"**Q: {question}**")
-        
-        if key in ["p_value", "power_achieved"]:
-            answer = st.text_input(f"Answer for {key}:", key=f"input_{key}", placeholder="e.g., 0.045")
-        elif key in ["significant", "sample_size_adequate"]:
-            answer = st.selectbox(f"Answer for {key}:", ["", "yes", "no"], key=f"input_{key}")
-        elif key == "business_impact":
-            answer = st.selectbox(f"Answer for {key}:", ["", "high", "medium", "low"], key=f"input_{key}")
-        elif key == "recommendation":
-            answer = st.selectbox(f"Answer for {key}:", ["", "rollout", "do_not_rollout", "inconclusive"], key=f"input_{key}")
-        
-        answers[key] = answer
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    return answers
-
-def score_sizing_answers(user_answers, scenario_dto):
-    """Score sizing questions against scenario parameters."""
-    logger.info("🎯 Starting sizing answers scoring...")
-    scores = {}
-    total_score = 0
-    max_score = len(user_answers)
-    
-    design = scenario_dto.design_params
-    
-    # Correct answers from scenario
-    correct_answers = {
-        "baseline_rate": round(design.baseline_conversion_rate, 3),
-        "target_lift": round(design.target_lift_pct, 3),
-        "alpha": round(design.alpha, 3),
-        "power": round(design.power, 3),
-        "daily_traffic": design.expected_daily_traffic,
-        "sample_size_per_arm": 0  # Will be calculated
-    }
-    
-    # Calculate correct sample size
-    from core.design import compute_sample_size
-    from core.types import Allocation
-    allocation = Allocation(control=design.allocation.control, treatment=design.allocation.treatment)
-    core_design = DesignParams(
-        baseline_conversion_rate=design.baseline_conversion_rate,
-        target_lift_pct=design.target_lift_pct,
-        alpha=design.alpha,
-        power=design.power,
-        allocation=allocation,
-        expected_daily_traffic=design.expected_daily_traffic
+    control_rate = st.number_input(
+        "Control conversion rate (%):",
+        min_value=0.0,
+        max_value=100.0,
+        value=None,
+        step=0.001,
+        format="%.3f",
+        key="control_rate_input",
+        help="Enter as percentage (e.g., 2.5 for 2.5%)"
     )
-    sample_size = compute_sample_size(core_design)
-    correct_answers["sample_size_per_arm"] = sample_size.per_arm
+    answers["control_conversion_rate"] = control_rate
     
-    for key, user_answer in user_answers.items():
-        correct_answer = correct_answers[key]
-        
-        if key in ["baseline_rate", "target_lift", "alpha", "power"]:
-            try:
-                user_val = round(float(user_answer), 3)
-                correct_val = correct_answer
-                if abs(user_val - correct_val) < 0.001:
-                    scores[key] = {"correct": True, "user": user_answer, "correct": correct_answer}
-                    total_score += 1
-                else:
-                    scores[key] = {"correct": False, "user": user_answer, "correct": correct_answer}
-            except:
-                scores[key] = {"correct": False, "user": user_answer, "correct": correct_answer}
-        elif key in ["daily_traffic", "sample_size_per_arm"]:
-            try:
-                user_val = int(user_answer)
-                correct_val = correct_answer
-                if abs(user_val - correct_val) <= 100:  # Allow some tolerance for sample size
-                    scores[key] = {"correct": True, "user": user_answer, "correct": correct_answer}
-                    total_score += 1
-                else:
-                    scores[key] = {"correct": False, "user": user_answer, "correct": correct_answer}
-            except:
-                scores[key] = {"correct": False, "user": user_answer, "correct": correct_answer}
+    # Question 2: Treatment conversion rate
+    st.markdown(f"**Question 2: What is the conversion rate for the treatment group?**")
+    st.markdown("*Hint: Calculate conversions ÷ total users in the treatment group*")
     
-    logger.info(f"📊 Sizing scoring complete: {total_score}/{max_score} correct")
-    return scores, total_score, max_score
+    treatment_rate = st.number_input(
+        "Treatment conversion rate (%):",
+        min_value=0.0,
+        max_value=100.0,
+        value=None,
+        step=0.001,
+        format="%.3f",
+        key="treatment_rate_input",
+        help="Enter as percentage (e.g., 2.7 for 2.7%)"
+    )
+    answers["treatment_conversion_rate"] = treatment_rate
+    
+    return answers
 
-def score_analysis_answers(user_answers, correct_analysis, sim_result):
-    """Score analysis questions against correct analysis."""
-    logger.info("🔍 Starting analysis answers scoring...")
-    scores = {}
-    total_score = 0
-    max_score = len(user_answers)
+def score_data_analysis_answers(user_answers, sim_result):
+    """Score data analysis questions against simulation results."""
+    logger.info("🔍 Starting data analysis answers scoring...")
     
-    # Correct answers
-    correct_answers = {
-        "p_value": round(correct_analysis.p_value, 6),
-        "significant": "yes" if correct_analysis.significant else "no",
-        "business_impact": "high" if sim_result.relative_lift_pct > 10 else "medium" if sim_result.relative_lift_pct > 5 else "low",
-        "recommendation": "rollout" if correct_analysis.significant and sim_result.relative_lift_pct > 5 else "do_not_rollout" if correct_analysis.significant and sim_result.relative_lift_pct < 0 else "inconclusive",
-        "sample_size_adequate": "yes" if sim_result.control_n > 1000 and sim_result.treatment_n > 1000 else "no",
-        "power_achieved": round(correct_analysis.power_achieved, 3)
-    }
+    # Get business target for Question 7
+    business_target_absolute = None
+    if st.session_state.scenario_data:
+        business_target_absolute = st.session_state.scenario_data.scenario.llm_expected.mde_absolute
     
-    for key, user_answer in user_answers.items():
-        correct_answer = correct_answers[key]
-        
-        if key in ["p_value", "power_achieved"]:
-            try:
-                user_val = round(float(user_answer), 3)
-                correct_val = correct_answer
-                if abs(user_val - correct_val) < 0.001:
-                    scores[key] = {"correct": True, "user": user_answer, "correct": correct_answer}
-                    total_score += 1
-                else:
-                    scores[key] = {"correct": False, "user": user_answer, "correct": correct_answer}
-            except:
-                scores[key] = {"correct": False, "user": user_answer, "correct": correct_answer}
-        else:
-            if user_answer.lower() == correct_answer.lower():
-                scores[key] = {"correct": True, "user": user_answer, "correct": correct_answer}
-                total_score += 1
-            else:
-                scores[key] = {"correct": False, "user": user_answer, "correct": correct_answer}
-    
-    logger.info(f"📊 Analysis scoring complete: {total_score}/{max_score} correct")
-    return scores, total_score, max_score
+    # Use core scoring
+    scoring_result = score_analysis_answers(user_answers, sim_result, business_target_absolute)
+    return scoring_result.scores, scoring_result.total_score, scoring_result.max_score
+
 
 def display_scoring_results(scores, total_score, max_score):
     """Display scoring results."""
@@ -825,100 +899,68 @@ def display_scoring_results(scores, total_score, max_score):
         else:
             st.error(f"❌ **{key.replace('_', ' ').title()}**: {result['user']} (Correct answer: {result['correct']})")
 
+def display_analysis_scoring_results(scores, total_score, max_score):
+    """Display analysis scoring results with proper question names."""
+    st.markdown("### 📊 Analysis Results")
+    
+    percentage = (total_score / max_score) * 100 if max_score > 0 else 0
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Score", f"{total_score}/{max_score}")
+    with col2:
+        st.metric("Percentage", f"{percentage:.1f}%")
+    with col3:
+        st.metric("Grade", "A" if percentage >= 90 else "B" if percentage >= 80 else "C" if percentage >= 70 else "D" if percentage >= 60 else "F")
+    
+    st.markdown("### 📝 Detailed Feedback")
+    
+    # Question name mapping
+    question_names = {
+        "control_conversion_rate": "Question 1: Control Conversion Rate",
+        "treatment_conversion_rate": "Question 2: Treatment Conversion Rate", 
+        "absolute_lift": "Question 3: Absolute Lift",
+        "relative_lift": "Question 4: Relative Lift",
+        "p_value": "Question 5: Statistical Significance (P-value)",
+        "confidence_interval": "Question 6: Confidence Interval",
+        "rollout_decision": "Question 7: Rollout Decision"
+    }
+    
+    for key, result in scores.items():
+        question_name = question_names.get(key, key.replace('_', ' ').title())
+        if result["correct"]:
+            st.success(f"✅ **{question_name}**: {result['user']} (Correct!)")
+        else:
+            st.error(f"❌ **{question_name}**: {result['user']} (Correct answer: {result['correct_answer']})")
+
 def score_design_answers(user_answers, scenario_data, sample_size_result):
     """Score the design questions against correct values"""
     logger.info("🎯 Starting design answers scoring...")
     st.markdown("### 📊 Design Results")
     
-    # Calculate correct answers
-    correct_sample_size = sample_size_result.per_arm
-    correct_duration = max(1, round(correct_sample_size * 2 / scenario_data.design_params.expected_daily_traffic))
+    # Convert scenario data to core types
+    design = scenario_data.design_params
+    allocation = Allocation(control=0.5, treatment=0.5)
+    core_design_params = DesignParams(
+        baseline_conversion_rate=design.baseline_conversion_rate,
+        target_lift_pct=design.target_lift_pct,
+        alpha=design.alpha,
+        power=design.power,
+        allocation=allocation,
+        expected_daily_traffic=design.expected_daily_traffic
+    )
     
-    # Calculate absolute lift in percentage points
-    baseline = scenario_data.design_params.baseline_conversion_rate
-    target_lift = scenario_data.design_params.target_lift_pct
-    correct_absolute_lift = round(baseline * target_lift * 100, 1)  # Convert to percentage points
+    # Use core scoring with scenario's mde_absolute
+    from core.validation import score_design_answers as core_score_design_answers
+    mde_absolute = design.mde_absolute
+    scoring_result = core_score_design_answers(user_answers, core_design_params, sample_size_result, mde_absolute)
     
-    # Calculate additional conversions per day
-    daily_traffic = scenario_data.design_params.expected_daily_traffic
-    correct_additional_conversions = round(daily_traffic * (baseline * target_lift))
+    # Display results
+    percentage = scoring_result.percentage
+    st.markdown(f"**Score: {scoring_result.total_score}/{scoring_result.max_score} ({percentage:.1f}%)**")
     
-    
-    scores = {}
-    total_score = 0
-    max_score = 6
-    
-    # Question 1: Business's targeted MDE
-    correct_mde_absolute = scenario_data.design_params.mde_absolute * 100  # Convert to percentage points
-    user_mde_absolute = user_answers.get("mde_absolute", 0)
-    if abs(user_mde_absolute - correct_mde_absolute) <= 0.5:  # Allow 0.5pp tolerance
-        st.success(f"✅ MDE (absolute): {user_mde_absolute:.1f}pp (Correct: {correct_mde_absolute:.1f}pp)")
-        scores["mde_absolute"] = {"correct": True, "user": user_mde_absolute, "correct": correct_mde_absolute}
-        total_score += 1
-    else:
-        st.error(f"❌ MDE (absolute): {user_mde_absolute:.1f}pp (Correct: {correct_mde_absolute:.1f}pp)")
-        scores["mde_absolute"] = {"correct": False, "user": user_mde_absolute, "correct": correct_mde_absolute}
-    
-    # Question 2: Target conversion rate
-    correct_target_rate = (baseline + scenario_data.design_params.mde_absolute) * 100  # Convert to percentage
-    user_target_rate = user_answers.get("target_conversion_rate", 0)
-    if abs(user_target_rate - correct_target_rate) <= 0.5:  # Allow 0.5% tolerance
-        st.success(f"✅ Target conversion rate: {user_target_rate:.1f}% (Correct: {correct_target_rate:.1f}%)")
-        scores["target_conversion_rate"] = {"correct": True, "user": user_target_rate, "correct": correct_target_rate}
-        total_score += 1
-    else:
-        st.error(f"❌ Target conversion rate: {user_target_rate:.1f}% (Correct: {correct_target_rate:.1f}%)")
-        scores["target_conversion_rate"] = {"correct": False, "user": user_target_rate, "correct": correct_target_rate}
-    
-    # Question 3: Target treatment conversion rate (relative lift)
-    correct_treatment_rate = (baseline + (baseline * target_lift)) * 100  # Convert to percentage
-    user_treatment_rate = user_answers.get("relative_lift_pct", 0)
-    correct_relative_lift = (scenario_data.design_params.mde_absolute / baseline) * 100
-    if abs(user_treatment_rate - correct_relative_lift) <= 2.0:  # Allow 2% tolerance
-        st.success(f"✅ Relative lift: {user_treatment_rate:.1f}% (Correct: {correct_relative_lift:.1f}%)")
-        scores["relative_lift_pct"] = {"correct": True, "user": user_treatment_rate, "correct": correct_relative_lift}
-        total_score += 1
-    else:
-        st.error(f"❌ Relative lift: {user_treatment_rate:.1f}% (Correct: {correct_relative_lift:.1f}%)")
-        scores["relative_lift_pct"] = {"correct": False, "user": user_treatment_rate, "correct": correct_relative_lift}
-    
-    # Question 4: Sample size
-    user_sample_size = user_answers.get("sample_size_per_group", 0)
-    if abs(user_sample_size - correct_sample_size) <= 100:  # Allow 100 users tolerance
-        st.success(f"✅ Sample size: {user_sample_size:,} users per group (Correct: {correct_sample_size:,})")
-        scores["sample_size"] = {"correct": True, "user": user_sample_size, "correct": correct_sample_size}
-        total_score += 1
-    else:
-        st.error(f"❌ Sample size: {user_sample_size:,} users per group (Correct: {correct_sample_size:,})")
-        scores["sample_size"] = {"correct": False, "user": user_sample_size, "correct": correct_sample_size}
-    
-    # Question 5: Duration
-    user_duration = user_answers.get("experiment_duration_days", 0)
-    if abs(user_duration - correct_duration) <= 2:  # Allow 2 days tolerance
-        st.success(f"✅ Duration: {user_duration} days (Correct: {correct_duration} days)")
-        scores["duration"] = {"correct": True, "user": user_duration, "correct": correct_duration}
-        total_score += 1
-    else:
-        st.error(f"❌ Duration: {user_duration} days (Correct: {correct_duration} days)")
-        scores["duration"] = {"correct": False, "user": user_duration, "correct": correct_duration}
-    
-    # Question 6: Additional conversions per day
-    user_additional_conversions = user_answers.get("additional_conversions_per_day", 0)
-    if abs(user_additional_conversions - correct_additional_conversions) <= 10:  # Allow 10 conversions tolerance
-        st.success(f"✅ Additional conversions: {user_additional_conversions} per day (Correct: {correct_additional_conversions})")
-        scores["additional_conversions"] = {"correct": True, "user": user_additional_conversions, "correct": correct_additional_conversions}
-        total_score += 1
-    else:
-        st.error(f"❌ Additional conversions: {user_additional_conversions} per day (Correct: {correct_additional_conversions})")
-        scores["additional_conversions"] = {"correct": False, "user": user_additional_conversions, "correct": correct_additional_conversions}
-    
-    
-    
-    percentage = (total_score / max_score) * 100
-    st.markdown(f"**Score: {total_score}/{max_score} ({percentage:.1f}%)**")
-    
-    logger.info(f"📊 Design scoring complete: {total_score}/{max_score} correct")
-    return scores, total_score, max_score
+    logger.info(f"📊 Design scoring complete: {scoring_result.total_score}/{scoring_result.max_score} correct")
+    return scoring_result.scores, scoring_result.total_score, scoring_result.max_score
 
 def main():
     """Main Streamlit app."""
@@ -938,9 +980,7 @@ def main():
                 st.session_state.design_scoring_results = None
                 st.session_state.current_question = 1  # Reset to first question
                 st.session_state.completed_questions = set()  # Reset completed questions
-                st.session_state.sizing_answers = {}
                 st.session_state.analysis_answers = {}
-                st.session_state.sizing_scoring_results = None
                 st.session_state.analysis_scoring_results = None
                 st.session_state.current_step = "scenario"
                 
@@ -959,9 +999,6 @@ def main():
         if st.session_state.design_scoring_results:
             st.success("✅ Design questions scored")
         
-        if st.session_state.sizing_scoring_results:
-            st.success("✅ Sizing questions scored")
-        
         if st.session_state.simulation_results:
             st.success("✅ Simulation complete")
         
@@ -973,7 +1010,6 @@ def main():
             "scenario": "🔵",
             "design": "🟡",
             "data_download": "🟢", 
-            "sizing": "🟠",
             "analysis": "🟣"
         }
         current_step = st.session_state.current_step
@@ -993,6 +1029,59 @@ def main():
             st.markdown(f"**Alpha:** {design.alpha}")
             st.markdown(f"**Power:** {design.power:.1%}")
             
+            # Add correct answers for questions 4, 5, 6
+            from core.design import compute_sample_size
+            from core.types import DesignParams, Allocation
+            
+            # Calculate correct sample size (Question 4)
+            design_params = DesignParams(
+                baseline_conversion_rate=design.baseline_conversion_rate,
+                target_lift_pct=design.target_lift_pct,
+                alpha=design.alpha,
+                power=design.power,
+                allocation=Allocation(0.5, 0.5),
+                expected_daily_traffic=design.expected_daily_traffic
+            )
+            sample_size_result = compute_sample_size(design_params)
+            correct_sample_size = sample_size_result.per_arm
+            
+            # Calculate correct duration (Question 5)
+            required_sample_size = correct_sample_size * 2  # Total sample size
+            correct_duration = max(1, round(required_sample_size / design.expected_daily_traffic))
+            
+            # Calculate correct additional conversions (Question 6)
+            correct_additional_conversions = round(design.expected_daily_traffic * design.mde_absolute)
+            
+            st.markdown("---")
+            st.markdown(f"**Sample Size (per group):** {correct_sample_size:,}")
+            st.markdown(f"**Duration:** {correct_duration} days")
+            st.markdown(f"**Additional Conversions/Day:** {correct_additional_conversions}")
+            
+            # Add simulation results if available
+            if st.session_state.simulation_results:
+                sim_result = st.session_state.simulation_results
+                st.markdown("---")
+                st.markdown("**📊 Actual Results:**")
+                st.markdown(f"**Control Rate:** {sim_result.control_rate:.3%}")
+                st.markdown(f"**Treatment Rate:** {sim_result.treatment_rate:.3%}")
+                st.markdown(f"**Control Users:** {sim_result.control_n:,}")
+                st.markdown(f"**Treatment Users:** {sim_result.treatment_n:,}")
+                st.markdown(f"**Control Conversions:** {sim_result.control_conversions:,}")
+                st.markdown(f"**Treatment Conversions:** {sim_result.treatment_conversions:,}")
+                
+                # Calculate and display lift metrics using core properties
+                absolute_lift = sim_result.absolute_lift * 100
+                relative_lift = sim_result.relative_lift_pct * 100
+                st.markdown(f"**Absolute Lift:** {absolute_lift:.3f} pp")
+                st.markdown(f"**Relative Lift:** {relative_lift:.1f}%")
+                
+                # Use core analysis for statistical metrics
+                if st.session_state.analysis_results:
+                    analysis = st.session_state.analysis_results
+                    st.markdown(f"**P-value:** {analysis.p_value:.3f}")
+                    ci_lower, ci_upper = analysis.confidence_interval
+                    st.markdown(f"**95% CI:** [{ci_lower*100:.2f}%, {ci_upper*100:.2f}%]")
+            
             # Navigation buttons
             st.markdown("### 🔄 Navigation")
             if current_step != "scenario":
@@ -1009,7 +1098,7 @@ def main():
     if not st.session_state.scenario_data:
         st.markdown("### 👋 Welcome to 30 Day A/Bs!")
         st.markdown("""
-        This tool helps you practice AB test analysis for interviews by:
+        This tool helps you practice A/B test analysis for interviews by:
         
         1. **Reading the experiment case** - AI-generated realistic scenarios
         2. **Sizing the experiment** - Calculate sample size, MDE, power
@@ -1044,10 +1133,14 @@ def main():
         
         # Add notebook download option
         st.markdown("### 📓 Design Framework")
-        st.markdown("Want to work through the calculations offline? Download the Jupyter notebook framework:")
+        st.markdown("Download this Jupyter notebook to work through the calculations for the design questions:")
         create_notebook_download()
         
         st.markdown("---")  # Add separator
+        
+        # Ensure current_question doesn't exceed maximum
+        if st.session_state.current_question > MAX_DESIGN_QUESTIONS:
+            st.session_state.current_question = MAX_DESIGN_QUESTIONS
         
         # Show all questions vertically on the same page
         for q_num in range(1, st.session_state.current_question + 1):
@@ -1058,7 +1151,7 @@ def main():
             else:
                 # Show locked question message
                 st.markdown(f"### 🎯 Step 2: Design the Experiment")
-                st.markdown(f"**Question {q_num} of 6**")
+                st.markdown(f"**Question {q_num} of {MAX_DESIGN_QUESTIONS}**")
                 st.warning(f"⚠️ Please complete Question {q_num - 1} correctly before proceeding to Question {q_num}")
                 st.info("💡 Go back and answer the previous question correctly to unlock this question")
                 st.markdown("---")
@@ -1073,7 +1166,7 @@ def main():
                 st.rerun()
         
         with col2:
-            if st.session_state.current_question < 6:
+            if st.session_state.current_question < MAX_DESIGN_QUESTIONS:
                 # Show Next Question button (user can proceed even if current question is wrong)
                 if st.button("➡️ Next Question", type="primary"):
                     st.session_state.current_question += 1
@@ -1095,7 +1188,7 @@ def main():
                     st.info("💡 Answer the current question correctly to submit all answers")
         
         with col3:
-            if st.session_state.current_question > 1:
+            if st.session_state.current_question > 1 and st.session_state.current_question < MAX_DESIGN_QUESTIONS:
                 if st.button("⏭️ Skip", key="skip_question"):
                     st.session_state.current_question += 1
                     st.rerun()
@@ -1108,128 +1201,137 @@ def main():
                 st.session_state.current_step = "design"
                 st.rerun()
         
-        st.markdown("### 📊 Download Simulated Data")
-        st.markdown("Great job on the design questions! Now you can download the data and run your own analysis.")
+        st.markdown("### 🚀 Run the Experiment")
+        st.markdown("Great job on the design questions! Now, let's kick off the experiment and gather the data we need to analyze the effect of the updates.")
         
-        if st.session_state.simulation_results:
-            create_csv_download(st.session_state.simulation_results)
+        # Initialize experiment state if not exists
+        if 'experiment_started' not in st.session_state:
+            st.session_state.experiment_started = False
+        if 'experiment_completed' not in st.session_state:
+            st.session_state.experiment_completed = False
         
-        if st.button("➡️ Next: Analyze the Data", type="primary"):
-            st.session_state.current_step = "sizing"
+        # Step 1: Start the experiment
+        if not st.session_state.experiment_started:
+            if st.button("🎯 Start Experiment", type="primary", key="start_experiment"):
+                st.session_state.experiment_started = True
+                st.rerun()
+        
+        # Step 2: Show loading animation
+        elif st.session_state.experiment_started and not st.session_state.experiment_completed:
+            st.markdown("### ⚡ Experiment Running...")
+            
+            # Create a progress bar with loading animation
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            import time
+            
+            # Simulate experiment progress
+            for i in range(101):
+                progress_bar.progress(i)
+                if i < 30:
+                    status_text.text(f'Setting up test groups... {i}%')
+                elif i < 60:
+                    status_text.text(f'Collecting user interactions... {i}%')
+                elif i < 90:
+                    status_text.text(f'Recording conversions... {i}%')
+                else:
+                    status_text.text(f'Finalizing results... {i}%')
+                time.sleep(0.02)  # Small delay for animation effect
+            
+            # Mark experiment as completed
+            st.session_state.experiment_completed = True
             st.rerun()
-    
-    # Step 4: Sizing questions (renamed from Step 2)
-    elif st.session_state.current_step == "sizing":
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            if st.button("⬅️ Back", key="back_from_sizing"):
-                st.session_state.current_step = "data_download"
-                st.rerun()
         
-        st.markdown("### 🎯 Step 4: Size the Experiment")
-        st.markdown("Based on the scenario above, answer these sizing questions:")
-        
-        sizing_answers = ask_experiment_sizing_questions()
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("⬅️ Back to Data", type="secondary"):
-                st.session_state.current_step = "data_download"
-                st.rerun()
-        
-        with col2:
-            if st.button("📊 Score Sizing Answers", type="primary"):
-                if all(sizing_answers.values()):
-                    scores, total_score, max_score = score_sizing_answers(
-                        sizing_answers, 
-                        st.session_state.scenario_data
-                    )
-                    st.session_state.sizing_scoring_results = (scores, total_score, max_score)
-                    st.session_state.sizing_answers = sizing_answers
-                    st.rerun()
-                else:
-                    st.warning("⚠️ Please answer all questions before scoring.")
-        
-        # Display sizing scoring results
-        if st.session_state.sizing_scoring_results:
-            scores, total_score, max_score = st.session_state.sizing_scoring_results
-            display_scoring_results(scores, total_score, max_score)
+        # Step 3: Show completion and download
+        elif st.session_state.experiment_completed:
+            st.success("### 🎉 Experiment Complete!")
+            st.markdown("Great! The experiment has been run and the data has been captured. Let's analyze the data.")
             
-            if st.button("➡️ Next: View Simulated Data", type="primary"):
-                st.session_state.current_step = "data"
+            st.markdown("### 📊 Analyze the Experimental Data")
+            st.markdown("Download both the experimental data and analysis template to work through the results:")
+            
+            if st.session_state.simulation_results:
+                # Create two columns for side-by-side downloads
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**📊 Experimental Data**")
+                    create_csv_download(st.session_state.simulation_results)
+                
+                with col2:
+                    st.markdown("**📓 Analysis Template**")
+                    create_analysis_notebook_download()
+            
+            if st.button("➡️ Next: Analyze the Data", type="primary"):
+                st.session_state.current_step = "analysis"
                 st.rerun()
     
-    # Step 3: Run simulation and show data
-    elif st.session_state.current_step == "data":
-        st.markdown("### 📊 Step 3: View Simulated Data")
-        
-        # Run simulation if not already done
-        if not st.session_state.simulation_results:
-            if st.button("🚀 Run Simulation", type="primary"):
-                sim_result, analysis = run_simulation(st.session_state.scenario_data)
-                if sim_result and analysis:
-                    st.session_state.simulation_results = sim_result
-                    st.session_state.analysis_results = analysis
-                    st.rerun()
-        
-        # Display simulation results
-        if st.session_state.simulation_results and st.session_state.analysis_results:
-            display_simulation_results(st.session_state.simulation_results, st.session_state.analysis_results)
-            
-            # CSV download
-            create_csv_download(st.session_state.simulation_results)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("⬅️ Back to Sizing", type="secondary"):
-                    st.session_state.current_step = "sizing"
-                    st.rerun()
-            
-            with col2:
-                if st.button("➡️ Next: Analyze Data", type="primary"):
-                    st.session_state.current_step = "analysis"
-                    st.rerun()
-    
-    # Step 5: Analysis questions
+    # Step 3: Analysis questions
     elif st.session_state.current_step == "analysis":
-        col1, col2 = st.columns([1, 4])
+        st.markdown("### 🔍 Step 3: Analyze the Data")
+        st.markdown("Now that you've downloaded the CSV data, let's analyze it step by step:")
+        st.markdown("💡 **Tip:** Use the actual results shown in the sidebar to help answer these questions.")
+        
+        # Ensure current_analysis_question doesn't exceed maximum
+        if st.session_state.current_analysis_question > MAX_ANALYSIS_QUESTIONS:
+            st.session_state.current_analysis_question = MAX_ANALYSIS_QUESTIONS
+        
+        # Show all analysis questions vertically on the same page
+        for q_num in range(1, st.session_state.current_analysis_question + 1):
+            # Check if this question should be shown
+            if q_num == 1 or (q_num - 1) in st.session_state.completed_analysis_questions:
+                ask_single_analysis_question(q_num)
+                st.markdown("---")  # Add separator between questions
+            else:
+                # Show locked question message
+                st.markdown(f"**Question {q_num} of {MAX_ANALYSIS_QUESTIONS}**")
+                st.warning(f"⚠️ Please complete Question {q_num - 1} correctly before proceeding to Question {q_num}")
+                st.info("💡 Go back and answer the previous question correctly to unlock this question")
+                st.markdown("---")
+                break  # Stop showing more questions if one is locked
+        
+        # Navigation buttons at the bottom
+        col1, col2, col3 = st.columns(3)
+        
         with col1:
-            if st.button("⬅️ Back", key="back_from_analysis"):
-                st.session_state.current_step = "sizing"
-                st.rerun()
-        
-        st.markdown("### 🤔 Step 5: Analyze the Data")
-        st.markdown("After analyzing the simulated data, answer these questions:")
-        
-        analysis_answers = ask_analysis_questions()
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("⬅️ Back to Sizing", type="secondary"):
-                st.session_state.current_step = "sizing"
+            if st.button("⬅️ Back to Data Download", key="back_to_data_download"):
+                st.session_state.current_step = "data_download"
                 st.rerun()
         
         with col2:
-            if st.button("📊 Score Analysis Answers", type="primary"):
-                if all(analysis_answers.values()):
-                    scores, total_score, max_score = score_analysis_answers(
-                        analysis_answers, 
-                        st.session_state.analysis_results, 
-                        st.session_state.simulation_results
-                    )
-                    st.session_state.analysis_scoring_results = (scores, total_score, max_score)
-                    st.session_state.analysis_answers = analysis_answers
+            if st.session_state.current_analysis_question < MAX_ANALYSIS_QUESTIONS:
+                # Show Next Question button (user can proceed even if current question is wrong)
+                if st.button("➡️ Next Question", type="primary"):
+                    st.session_state.current_analysis_question += 1
                     st.rerun()
+            else:
+                # For question 2, check if it's completed before allowing submit
+                if st.session_state.current_analysis_question in st.session_state.completed_analysis_questions:
+                    if st.button("✅ Complete Analysis", type="primary"):
+                        # Score the analysis answers
+                        analysis_scores, analysis_total, analysis_max = score_data_analysis_answers(
+                            st.session_state.analysis_answers, 
+                            st.session_state.simulation_results
+                        )
+                        st.session_state.analysis_scoring_results = (analysis_scores, analysis_total, analysis_max)
+                        st.rerun()
                 else:
-                    st.warning("⚠️ Please answer all questions before scoring.")
+                    st.info("💡 Answer the current question correctly to complete the analysis")
+        
+        with col3:
+            if st.session_state.current_analysis_question > 1 and st.session_state.current_analysis_question < MAX_ANALYSIS_QUESTIONS:
+                if st.button("⏭️ Skip", key="skip_analysis_question"):
+                    st.session_state.current_analysis_question += 1
+                    st.rerun()
         
         # Display analysis scoring results
         if st.session_state.analysis_scoring_results:
             scores, total_score, max_score = st.session_state.analysis_scoring_results
-            display_scoring_results(scores, total_score, max_score)
+            display_analysis_scoring_results(scores, total_score, max_score)
             
-            st.markdown("### 🎉 Practice Session Complete!")
-            st.markdown("You've completed the full AB test analysis workflow. Generate a new scenario to practice again!")
+            st.markdown("### 🎉 Analysis Complete!")
+            st.markdown("Great job calculating the conversion rates! Generate a new scenario to practice again, or we'll add more analysis questions soon.")
 
 if __name__ == "__main__":
     main()

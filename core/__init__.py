@@ -15,6 +15,27 @@ from .types import (
     TestQuality,
 )
 
+from .validation import (
+    ValidationResult,
+    ScoringResult,
+    validate_design_answer,
+    validate_analysis_answer,
+    score_design_answers,
+    score_analysis_answers,
+)
+
+from .analyze import (
+    make_rollout_decision,
+)
+
+from .scoring import (
+    AnswerKey,
+    QuizResult,
+    generate_design_answer_key,
+    generate_analysis_answer_key,
+    create_complete_quiz_result,
+)
+
 __all__ = [
     "Allocation",
     "DesignParams", 
@@ -23,4 +44,16 @@ __all__ = [
     "AnalysisResult",
     "BusinessImpact",
     "TestQuality",
+    "ValidationResult",
+    "ScoringResult",
+    "validate_design_answer",
+    "validate_analysis_answer",
+    "score_design_answers",
+    "score_analysis_answers",
+    "make_rollout_decision",
+    "AnswerKey",
+    "QuizResult",
+    "generate_design_answer_key",
+    "generate_analysis_answer_key",
+    "create_complete_quiz_result",
 ]
