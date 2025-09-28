@@ -127,13 +127,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Usage Examples**: Updated examples showing new validation and scoring workflows
 - **Architecture Documentation**: Clear explanation of separation of concerns
 
+## [1.3.0] - 2025-01-16
+
+### Added
+- **MIT License**: Added proper MIT license file for open source distribution
+- **Streamlit Cloud Focus**: Updated README to prioritize Streamlit Cloud deployment
+- **Professional Contact Section**: Added clean contact information with clickable links
+- **Origin Story**: Added engaging project story explaining the "30 Day A/Bs" name and purpose
+
+### Changed
+- **README Streamlined**: Reduced from 365 lines to 96 lines by removing duplicate content
+- **Installation Focus**: Shifted from local installation to Streamlit Cloud deployment
+- **Contact Information**: Professional formatting with LinkedIn, website, and email links
+- **Project Description**: Updated to emphasize experimental design and statistics education
+
+### Improved
+- **User Experience**: Faster path to trying the application via Streamlit Cloud
+- **Documentation Quality**: Removed redundant sections and improved clarity
+- **Professional Presentation**: Better formatting and organization throughout README
+- **Accessibility**: Streamlit Cloud deployment eliminates installation barriers
+
+### Technical Improvements
+- **Repository Structure**: Added proper LICENSE file for open source compliance
+- **Documentation Maintenance**: Cleaned up outdated references and duplicate content
+- **Deployment Ready**: Optimized for Streamlit Cloud deployment workflow
+
+### Removed
+- **Duplicate Content**: Eliminated redundant project structure sections
+- **Complex Installation**: Simplified setup instructions for contributors only
+- **Outdated References**: Removed references to non-existent files and directories
+
 ## [Unreleased]
 
 ### Planned
+- Streamlit Cloud deployment
 - Additional question types and difficulty levels
 - More statistical test options (chi-square, Fisher's exact)
 - Export functionality for results and reports
-- User progress tracking and analytics
 - Custom scenario creation tools
 - Advanced power analysis features
 

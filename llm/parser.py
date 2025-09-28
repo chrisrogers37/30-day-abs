@@ -1,8 +1,76 @@
 """
-JSON parser and validator for LLM outputs.
+JSON Parser Module - Robust LLM Output Parsing and Schema Validation
 
-This module handles strict JSON parsing, schema validation, and error recovery
-for LLM-generated scenario data.
+This module provides comprehensive JSON parsing and schema validation for
+LLM-generated scenario data. It handles various JSON formats, provides robust
+error recovery, and ensures data integrity through multiple validation layers.
+
+Key Features:
+- Multi-strategy JSON extraction from LLM responses
+- Comprehensive schema validation with Pydantic
+- Business logic validation and consistency checks
+- Detailed error reporting with actionable suggestions
+- Fallback scenario generation when parsing fails
+- Support for various JSON formats (markdown, raw, etc.)
+- Robust error recovery and handling
+
+Parsing Strategies:
+1. Markdown code block extraction (`\`\`\`json ... \`\`\``)
+2. Generic code block extraction (`\`\`\` ... \`\`\``)
+3. Raw JSON object detection
+4. Fallback boundary detection with brace matching
+
+Validation Layers:
+1. JSON Structure: Basic JSON syntax and structure validation
+2. Schema Validation: Pydantic model validation with type checking
+3. Business Logic: Parameter consistency and business rule validation
+4. Data Integrity: Cross-field validation and relationship checks
+
+Error Handling:
+- Specific exception types for different failure modes
+- Detailed error messages with context
+- Actionable suggestions for fixing common issues
+- Graceful degradation with fallback scenarios
+- Comprehensive logging and debugging support
+
+JSON Extraction:
+The parser uses multiple strategies to extract JSON from LLM responses:
+- Markdown code blocks with language specification
+- Generic code blocks without language specification
+- Raw JSON objects in the response
+- Fallback to brace matching for malformed responses
+
+Schema Validation:
+- Comprehensive Pydantic model validation
+- Type checking and constraint validation
+- Required field validation
+- Enum value validation
+- Cross-field relationship validation
+
+Business Logic Validation:
+- Parameter consistency checks
+- Mathematical relationship validation
+- Business context appropriateness
+- Realism and feasibility assessment
+
+Usage Examples:
+    Basic parsing:
+        parser = LLMOutputParser()
+        result = parser.parse_llm_response(llm_content)
+    
+    Error handling:
+        if not result.success:
+            suggestions = parser.get_parsing_suggestions(result.errors)
+    
+    Fallback scenarios:
+        fallback_scenario = parser.create_fallback_scenario()
+
+Dependencies:
+- json: Standard JSON parsing
+- re: Regular expressions for JSON extraction
+- pydantic: Schema validation and data modeling
+- schemas.scenario: Scenario DTOs for validation
+- logging: Built-in logging support
 """
 
 import json
@@ -27,7 +95,41 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ParsingResult:
-    """Result of JSON parsing and validation."""
+    """
+    Comprehensive result dataclass for JSON parsing and validation operations.
+    
+    This dataclass encapsulates all information about a parsing attempt,
+    including the parsed data, validation results, and detailed error/warning
+    information for debugging and error recovery.
+    
+    Attributes:
+        success (bool): Whether the parsing and validation was successful
+        data (Optional[Dict]): Raw parsed JSON data (if parsing succeeded)
+        scenario_dto (Optional[ScenarioResponseDTO]): Validated scenario DTO
+        errors (List[str]): List of parsing and validation errors
+        warnings (List[str]): List of warnings about the parsed data
+        raw_content (str): Original raw content from the LLM response
+    
+    Examples:
+        Check parsing success:
+            result = parser.parse_llm_response(llm_content)
+            if result.success:
+                scenario = result.scenario_dto
+                print(f"Parsed scenario: {scenario.scenario.title}")
+            else:
+                print(f"Parsing failed: {result.errors}")
+        
+        Analyze warnings:
+            for warning in result.warnings:
+                print(f"Warning: {warning}")
+        
+        Access raw data:
+            if result.data:
+                print(f"Raw JSON keys: {list(result.data.keys())}")
+        
+        Debug with raw content:
+            print(f"Raw LLM response: {result.raw_content[:100]}...")
+    """
     success: bool
     data: Optional[Dict] = None
     scenario_dto: Optional[ScenarioResponseDTO] = None
@@ -36,6 +138,7 @@ class ParsingResult:
     raw_content: str = ""
     
     def __post_init__(self):
+        """Initialize empty lists for errors and warnings if None."""
         if self.errors is None:
             self.errors = []
         if self.warnings is None:
@@ -53,9 +156,65 @@ class SchemaValidationError(Exception):
 
 
 class LLMOutputParser:
-    """Parser for LLM-generated JSON outputs with comprehensive validation."""
+    """
+    Parser for LLM-generated JSON outputs with comprehensive validation.
+    
+    This class provides robust JSON parsing and schema validation for LLM-generated
+    scenario data. It handles various JSON formats, provides comprehensive error
+    recovery, and ensures data integrity through multiple validation layers.
+    
+    Features:
+        - Multi-strategy JSON extraction from LLM responses
+        - Comprehensive schema validation with Pydantic
+        - Business logic validation and consistency checks
+        - Detailed error reporting with actionable suggestions
+        - Fallback scenario generation when parsing fails
+        - Support for various JSON formats (markdown, raw, etc.)
+        - Robust error recovery and handling
+    
+    Parsing Strategies:
+        1. Markdown code block extraction (`\`\`\`json ... \`\`\``)
+        2. Generic code block extraction (`\`\`\` ... \`\`\``)
+        3. Raw JSON object detection
+        4. Fallback boundary detection with brace matching
+    
+    Validation Layers:
+        1. JSON Structure: Basic JSON syntax and structure validation
+        2. Schema Validation: Pydantic model validation with type checking
+        3. Business Logic: Parameter consistency and business rule validation
+        4. Data Integrity: Cross-field validation and relationship checks
+    
+    Attributes:
+        validation_errors (List[str]): List of schema validation errors
+        parsing_errors (List[str]): List of JSON parsing errors
+    
+    Examples:
+        Basic parsing:
+            parser = LLMOutputParser()
+            result = parser.parse_llm_response(llm_content)
+        
+        Error handling:
+            if not result.success:
+                suggestions = parser.get_parsing_suggestions(result.errors)
+        
+        Fallback scenarios:
+            fallback_scenario = parser.create_fallback_scenario()
+    
+    JSON Extraction:
+    The parser uses multiple strategies to extract JSON from LLM responses:
+    - Markdown code blocks with language specification
+    - Generic code blocks without language specification
+    - Raw JSON objects in the response
+    - Fallback to brace matching for malformed responses
+    """
     
     def __init__(self):
+        """
+        Initialize the parser with empty error tracking lists.
+        
+        Sets up the parser with empty lists for tracking validation and
+        parsing errors during the parsing process.
+        """
         self.validation_errors = []
         self.parsing_errors = []
     

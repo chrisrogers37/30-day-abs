@@ -1,8 +1,73 @@
 """
-Scenario generator with retry logic and fallback scenarios.
+Scenario Generator Module - Orchestrated LLM Scenario Generation
 
-This module orchestrates the complete LLM scenario generation process,
-including client calls, parsing, validation, and retry logic.
+This module provides comprehensive orchestration of the LLM scenario generation
+process, including client calls, parsing, validation, quality scoring, and retry
+logic. It serves as the main entry point for generating realistic AB test scenarios
+with built-in quality control and fallback mechanisms.
+
+Key Features:
+- Multi-attempt generation with configurable retry logic
+- Quality scoring and threshold-based acceptance
+- Comprehensive validation with guardrails
+- Fallback scenario generation when LLM fails
+- Parallel scenario generation support
+- Custom request handling and prompt customization
+- Detailed error reporting and suggestions
+- Performance monitoring and statistics
+
+Architecture:
+The module follows a layered architecture with clear separation of concerns:
+- LLMScenarioGenerator: Main orchestrator with generation logic
+- GenerationResult: Comprehensive result dataclass with metadata
+- ScenarioGenerationError: Specific exception for generation failures
+- Factory functions: Easy generator creation with sensible defaults
+
+Generation Pipeline:
+1. Request Processing: Parse and validate generation requests
+2. Prompt Creation: Generate customized prompts based on request
+3. LLM Interaction: Call LLM with retry logic and error handling
+4. Response Parsing: Parse and validate LLM JSON responses
+5. Guardrail Validation: Apply comprehensive parameter validation
+6. Quality Scoring: Calculate quality score and threshold check
+7. Fallback Handling: Generate fallback scenarios when needed
+8. Result Packaging: Package results with comprehensive metadata
+
+Quality Control:
+- Parameter bounds validation (statistical parameters)
+- Business context consistency checks
+- Mathematical consistency validation
+- Realism and feasibility assessment
+- Quality scoring with configurable thresholds
+- Automatic regeneration for low-quality outputs
+
+Error Handling:
+- Comprehensive retry logic with exponential backoff
+- Specific error classification and handling
+- Detailed error reporting with suggestions
+- Graceful degradation with fallback scenarios
+- Performance monitoring and logging
+
+Usage Examples:
+    Basic generation:
+        generator = create_scenario_generator(provider="mock")
+        result = await generator.generate_scenario()
+    
+    Advanced configuration:
+        result = await generator.generate_scenario(
+            max_attempts=5,
+            min_quality_score=0.8
+        )
+    
+    Parallel generation:
+        results = await generator.generate_multiple_scenarios(count=3)
+
+Dependencies:
+- llm.client: LLM client interface
+- llm.parser: JSON parsing and validation
+- llm.guardrails: Parameter validation and bounds checking
+- schemas.scenario: Scenario DTOs and validation
+- asyncio: Async support for concurrent operations
 """
 
 import asyncio
@@ -29,7 +94,43 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class GenerationResult:
-    """Result of scenario generation."""
+    """
+    Comprehensive result dataclass for scenario generation operations.
+    
+    This dataclass encapsulates all information about a scenario generation attempt,
+    including the generated scenario, performance metrics, quality assessment,
+    and detailed error/warning information.
+    
+    Attributes:
+        success (bool): Whether the generation was successful
+        scenario_dto (Optional[ScenarioResponseDTO]): The generated scenario DTO
+        attempts (int): Number of generation attempts made
+        total_time (float): Total time taken for generation in seconds
+        errors (List[str]): List of errors encountered during generation
+        warnings (List[str]): List of warnings about the generated scenario
+        quality_score (float): Quality score of the generated scenario (0-1)
+        used_fallback (bool): Whether a fallback scenario was used
+    
+    Examples:
+        Check generation success:
+            result = await generator.generate_scenario()
+            if result.success:
+                print(f"Generated: {result.scenario_dto.scenario.title}")
+            else:
+                print(f"Generation failed: {result.errors}")
+        
+        Analyze quality:
+            if result.quality_score < 0.7:
+                print(f"Low quality scenario: {result.quality_score:.2f}")
+        
+        Performance monitoring:
+            if result.total_time > 10.0:
+                print(f"Slow generation: {result.total_time:.2f}s")
+        
+        Fallback detection:
+            if result.used_fallback:
+                print("Warning: Used fallback scenario")
+    """
     success: bool
     scenario_dto: Optional[ScenarioResponseDTO] = None
     attempts: int = 0
@@ -40,6 +141,7 @@ class GenerationResult:
     used_fallback: bool = False
     
     def __post_init__(self):
+        """Initialize empty lists for errors and warnings if None."""
         if self.errors is None:
             self.errors = []
         if self.warnings is None:
@@ -52,9 +154,66 @@ class ScenarioGenerationError(Exception):
 
 
 class LLMScenarioGenerator:
-    """Main scenario generator with comprehensive retry logic and validation."""
+    """
+    Main scenario generator with comprehensive retry logic and validation.
+    
+    This class orchestrates the complete LLM scenario generation process,
+    including client calls, parsing, validation, quality scoring, and retry logic.
+    It provides a robust, production-ready interface for generating realistic
+    AB test scenarios with built-in quality control mechanisms.
+    
+    Features:
+        - Multi-attempt generation with configurable retry logic
+        - Quality scoring and threshold-based acceptance
+        - Comprehensive validation with guardrails
+        - Fallback scenario generation when LLM fails
+        - Parallel scenario generation support
+        - Custom request handling and prompt customization
+        - Detailed error reporting and suggestions
+        - Performance monitoring and statistics
+    
+    Attributes:
+        client (LLMClient): The LLM client for API interactions
+        parser (LLMOutputParser): Parser for LLM JSON responses
+        guardrails (LLMGuardrails): Validator for parameter bounds and consistency
+        prompt_template (str): Template for scenario generation prompts
+    
+    Examples:
+        Basic usage:
+            generator = LLMScenarioGenerator(client)
+            result = await generator.generate_scenario()
+        
+        With custom settings:
+            result = await generator.generate_scenario(
+                max_attempts=5,
+                min_quality_score=0.8
+            )
+        
+        Parallel generation:
+            results = await generator.generate_multiple_scenarios(count=3)
+    
+    Generation Process:
+        1. Request Processing: Parse and validate generation requests
+        2. Prompt Creation: Generate customized prompts based on request
+        3. LLM Interaction: Call LLM with retry logic and error handling
+        4. Response Parsing: Parse and validate LLM JSON responses
+        5. Guardrail Validation: Apply comprehensive parameter validation
+        6. Quality Scoring: Calculate quality score and threshold check
+        7. Fallback Handling: Generate fallback scenarios when needed
+        8. Result Packaging: Package results with comprehensive metadata
+    """
     
     def __init__(self, client: LLMClient):
+        """
+        Initialize the scenario generator with the provided LLM client.
+        
+        Args:
+            client (LLMClient): The LLM client to use for API interactions
+        
+        Note:
+            The generator automatically initializes its parser, guardrails,
+            and loads the prompt template from the prompts directory.
+        """
         self.client = client
         self.parser = LLMOutputParser()
         self.guardrails = LLMGuardrails()

@@ -1,8 +1,66 @@
 """
-LLM client wrapper with pluggable interface and retry logic.
+LLM Client Module - Pluggable Interface for Large Language Model APIs
 
-This module provides a clean interface for LLM API calls with comprehensive
-error handling, rate limiting, and retry logic.
+This module provides a unified, pluggable interface for interacting with various
+Large Language Model (LLM) providers including OpenAI, Anthropic, and mock clients.
+It includes comprehensive error handling, retry logic with exponential backoff,
+rate limiting, and standardized response formatting.
+
+Key Features:
+- Multi-provider support (OpenAI, Anthropic, Mock)
+- Async/await support for concurrent operations
+- Exponential backoff retry logic with configurable attempts
+- Rate limit handling and automatic delays
+- Comprehensive error classification and handling
+- Standardized response format with metadata
+- Factory pattern for easy client creation
+- Built-in logging and monitoring support
+
+Architecture:
+The module follows a clean architecture with clear separation of concerns:
+- LLMClient: Main client interface with async support
+- LLMConfig: Configuration dataclass for client settings
+- LLMResponse: Standardized response format with metadata
+- MockLLMClient: Mock implementation for testing and development
+- Factory functions: Easy client creation with sensible defaults
+
+Usage Examples:
+    Basic Usage:
+        client = create_llm_client(provider="openai", api_key="your-key")
+        response = await client.generate_completion(messages=[...])
+    
+    Advanced Configuration:
+        config = LLMConfig(
+            provider=LLMProvider.OPENAI,
+            model="gpt-4",
+            max_retries=5,
+            temperature=0.5
+        )
+        client = LLMClient(config)
+    
+    Mock Client for Testing:
+        client = create_llm_client(provider="mock")
+        response = await client.generate_scenario()
+
+Error Handling:
+The module provides specific exception types for different failure modes:
+- LLMError: Base exception for all LLM-related errors
+- LLMRateLimitError: Rate limit exceeded
+- LLMTimeoutError: Request timeout
+- LLMValidationError: Response validation failed
+
+Performance Considerations:
+- Async/await support for non-blocking operations
+- Connection pooling and reuse
+- Configurable timeouts and retry delays
+- Rate limiting to prevent API quota exhaustion
+- Efficient memory usage with streaming support (when available)
+
+Dependencies:
+- httpx: HTTP client for API requests
+- openai: OpenAI Python SDK
+- asyncio: Async support
+- logging: Built-in logging support
 """
 
 import asyncio
@@ -34,7 +92,41 @@ class LLMProvider(str, Enum):
 
 @dataclass
 class LLMConfig:
-    """Configuration for LLM client."""
+    """
+    Configuration dataclass for LLM client settings.
+    
+    This class encapsulates all configuration parameters needed to initialize
+    and configure an LLM client. It provides sensible defaults while allowing
+    customization for specific use cases.
+    
+    Attributes:
+        provider (LLMProvider): The LLM provider to use (OpenAI, Anthropic, Mock)
+        api_key (str): API key for the LLM provider
+        model (str): Model name to use (default: "gpt-4")
+        max_tokens (int): Maximum tokens to generate (default: 4000)
+        temperature (float): Sampling temperature 0-2 (default: 0.7)
+        timeout (int): Request timeout in seconds (default: 30)
+        max_retries (int): Maximum retry attempts (default: 3)
+        retry_delay (float): Base delay between retries in seconds (default: 1.0)
+        rate_limit_delay (float): Additional delay for rate limiting (default: 0.1)
+    
+    Examples:
+        Basic configuration:
+            config = LLMConfig(
+                provider=LLMProvider.OPENAI,
+                api_key="your-api-key"
+            )
+        
+        Advanced configuration:
+            config = LLMConfig(
+                provider=LLMProvider.OPENAI,
+                api_key="your-api-key",
+                model="gpt-4-turbo",
+                max_tokens=8000,
+                temperature=0.5,
+                max_retries=5
+            )
+    """
     provider: LLMProvider
     api_key: str
     model: str = "gpt-4"
@@ -48,7 +140,33 @@ class LLMConfig:
 
 @dataclass
 class LLMResponse:
-    """Response from LLM client."""
+    """
+    Standardized response format from LLM client.
+    
+    This dataclass provides a consistent response format across all LLM providers,
+    including the generated content, metadata, and performance metrics.
+    
+    Attributes:
+        content (str): The generated text content from the LLM
+        model (str): The model name used for generation
+        usage (Optional[Dict[str, int]]): Token usage statistics (prompt, completion, total)
+        finish_reason (Optional[str]): Reason why generation finished (stop, length, etc.)
+        response_time (float): Time taken for the request in seconds
+        retry_count (int): Number of retries performed before success
+    
+    Examples:
+        Access generated content:
+            response = await client.generate_completion(messages=[...])
+            print(response.content)
+        
+        Check performance metrics:
+            if response.response_time > 5.0:
+                print(f"Slow response: {response.response_time:.2f}s")
+        
+        Monitor retry behavior:
+            if response.retry_count > 0:
+                print(f"Request succeeded after {response.retry_count} retries")
+    """
     content: str
     model: str
     usage: Optional[Dict[str, int]] = None
@@ -78,9 +196,54 @@ class LLMValidationError(LLMError):
 
 
 class LLMClient:
-    """LLM client with retry logic and error handling."""
+    """
+    Main LLM client with comprehensive retry logic and error handling.
+    
+    This class provides a unified interface for interacting with various LLM providers.
+    It includes automatic retry logic with exponential backoff, rate limiting,
+    comprehensive error handling, and standardized response formatting.
+    
+    Features:
+        - Multi-provider support (OpenAI, Anthropic, Mock)
+        - Async/await support for concurrent operations
+        - Exponential backoff retry logic
+        - Rate limit handling and automatic delays
+        - Comprehensive error classification
+        - Built-in logging and monitoring
+        - Standardized response format
+    
+    Attributes:
+        config (LLMConfig): Configuration settings for the client
+        _client: The underlying provider-specific client instance
+    
+    Examples:
+        Basic usage:
+            config = LLMConfig(provider=LLMProvider.OPENAI, api_key="key")
+            client = LLMClient(config)
+            response = await client.generate_completion(messages=[...])
+        
+        Scenario generation:
+            response = await client.generate_scenario("Generate a test scenario")
+        
+        With custom parameters:
+            response = await client.generate_completion(
+                messages=[...],
+                temperature=0.5,
+                max_tokens=2000
+            )
+    """
     
     def __init__(self, config: LLMConfig):
+        """
+        Initialize the LLM client with the provided configuration.
+        
+        Args:
+            config (LLMConfig): Configuration settings for the client
+            
+        Raises:
+            ValueError: If the provider is not supported
+            NotImplementedError: If the provider is not yet implemented
+        """
         self.config = config
         self._client = None
         self._setup_client()
@@ -107,18 +270,64 @@ class LLMClient:
         **kwargs
     ) -> LLMResponse:
         """
-        Generate completion with retry logic and error handling.
+        Generate completion with comprehensive retry logic and error handling.
+        
+        This method handles the complete LLM interaction flow including message
+        preparation, retry logic with exponential backoff, rate limiting,
+        error classification, and response formatting.
         
         Args:
-            messages: List of message dictionaries with 'role' and 'content'
-            system_prompt: Optional system prompt
-            **kwargs: Additional parameters for the LLM call
-            
+            messages (List[Dict[str, str]]): List of message dictionaries.
+                Each message should have 'role' (str) and 'content' (str) keys.
+                Valid roles: 'user', 'assistant', 'system'
+            system_prompt (Optional[str]): Optional system prompt to prepend
+                to the message list. If provided, it will be added as the first
+                message with role 'system'.
+            **kwargs: Additional parameters to pass to the LLM call:
+                - temperature (float): Sampling temperature (0-2)
+                - max_tokens (int): Maximum tokens to generate
+                - top_p (float): Nucleus sampling parameter
+                - frequency_penalty (float): Frequency penalty
+                - presence_penalty (float): Presence penalty
+        
         Returns:
-            LLMResponse with generated content
-            
+            LLMResponse: Standardized response containing:
+                - content: Generated text content
+                - model: Model name used
+                - usage: Token usage statistics
+                - finish_reason: Reason for completion
+                - response_time: Request duration
+                - retry_count: Number of retries performed
+        
         Raises:
-            LLMError: For various LLM-related errors
+            LLMError: Base exception for LLM-related errors
+            LLMRateLimitError: When rate limits are exceeded
+            LLMTimeoutError: When requests timeout
+            LLMValidationError: When response validation fails
+        
+        Examples:
+            Basic completion:
+                messages = [{"role": "user", "content": "Hello, world!"}]
+                response = await client.generate_completion(messages)
+                print(response.content)
+            
+            With system prompt:
+                system = "You are a helpful assistant."
+                messages = [{"role": "user", "content": "Explain AI"}]
+                response = await client.generate_completion(messages, system)
+            
+            With custom parameters:
+                response = await client.generate_completion(
+                    messages,
+                    temperature=0.5,
+                    max_tokens=1000
+                )
+        
+        Performance Notes:
+            - Uses exponential backoff for retries (1s, 2s, 4s, ...)
+            - Automatic rate limit handling with configurable delays
+            - Connection pooling for efficient HTTP requests
+            - Async/await support for concurrent operations
         """
         start_time = time.time()
         
