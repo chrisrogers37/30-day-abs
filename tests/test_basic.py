@@ -106,8 +106,7 @@ def test_simulation():
             expected_daily_traffic=10000
         )
         
-        true_rates = {"control": 0.05, "treatment": 0.0575}
-        sim_result = simulate_trial(params, true_rates, seed=42)
+        sim_result = simulate_trial(params, seed=42)
         
         assert sim_result.control_n > 0
         assert sim_result.treatment_n > 0

@@ -1,8 +1,79 @@
 """
-Guardrails for LLM output validation and regeneration.
+Guardrails Module - Comprehensive Validation and Parameter Bounds Checking
 
-This module provides comprehensive sanity checks, clamping logic, and
-regeneration hints for LLM-generated scenarios.
+This module provides comprehensive validation and parameter bounds checking for
+LLM-generated AB test scenarios. It ensures that all generated scenarios meet
+statistical soundness requirements, business context consistency, and realism
+criteria through a multi-layered validation system.
+
+Key Features:
+- Parameter bounds validation with statistical soundness checks
+- Business context consistency validation (company type, user segment)
+- Mathematical consistency validation (parameter relationships)
+- Realism and feasibility assessment
+- Parameter clamping with automatic correction
+- Quality scoring with quantitative assessment
+- Regeneration hints for failed validations
+- Comprehensive error reporting and suggestions
+
+Validation Layers:
+1. Parameter Bounds: Statistical parameter range validation
+2. Business Context: Company type and user segment consistency
+3. Parameter Consistency: Mathematical relationship validation
+4. Metric Consistency: Proportion-based metric validation
+5. Realism Checks: Feasibility and business realism assessment
+
+Parameter Bounds:
+- baseline_conversion_rate: 0.001 to 0.5 (0.1% to 50%)
+- mde_absolute: 0.001 to 0.1 (0.1% to 10% percentage points)
+- target_lift_pct: -0.5 to 0.5 (-50% to +50%)
+- alpha: 0.01 to 0.1 (1% to 10%)
+- power: 0.7 to 0.95 (70% to 95%)
+- expected_daily_traffic: 500 to 5,000
+
+Business Context Validation:
+- Company type scenarios (E-commerce, SaaS, Media, Fintech, etc.)
+- User segment contexts (new users, returning users, premium users)
+- KPI appropriateness for proportion-based testing
+- Unit consistency with measurement type
+
+Mathematical Consistency:
+- Baseline vs control rate consistency
+- Target lift vs actual lift consistency
+- MDE absolute vs target lift percentage relationship
+- Allocation proportion validation (must sum to 1.0)
+
+Quality Scoring:
+- Quantitative assessment (0-1 scale)
+- Penalties for unrealistic values
+- Consistency bonus for aligned parameters
+- Business context alignment scoring
+
+Error Handling:
+- Specific validation error types
+- Detailed error messages with context
+- Regeneration hints for common issues
+- Graceful degradation with warnings
+
+Usage Examples:
+    Basic validation:
+        guardrails = LLMGuardrails()
+        result = guardrails.validate_scenario(scenario_dto)
+    
+    Parameter clamping:
+        clamped_scenario, clamped_values = guardrails.clamp_parameters(scenario_dto)
+    
+    Quality scoring:
+        quality_score = guardrails.get_quality_score(scenario_dto)
+    
+    Regeneration hints:
+        hints = guardrails.generate_regeneration_hints(validation_result)
+
+Dependencies:
+- schemas.scenario: Scenario DTOs for validation
+- schemas.design: Design parameter DTOs
+- schemas.shared: Shared enums and types
+- logging: Built-in logging support
 """
 
 import logging
@@ -18,7 +89,45 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ValidationResult:
-    """Result of guardrail validation."""
+    """
+    Comprehensive result dataclass for guardrail validation operations.
+    
+    This dataclass encapsulates all information about a validation attempt,
+    including validation status, quality assessment, detailed error/warning
+    information, and parameter clamping results.
+    
+    Attributes:
+        is_valid (bool): Whether the scenario passed all validation checks
+        quality_score (float): Quantitative quality score (0-1)
+        errors (List[str]): List of validation errors that must be fixed
+        warnings (List[str]): List of warnings about potential issues
+        suggestions (List[str]): List of suggestions for improvement
+        clamped_values (Dict[str, Tuple[float, float]]): Dictionary mapping
+            field names to (original_value, clamped_value) tuples for parameters
+            that were automatically corrected
+    
+    Examples:
+        Check validation status:
+            result = guardrails.validate_scenario(scenario_dto)
+            if result.is_valid:
+                print("Scenario passed validation")
+            else:
+                print(f"Validation failed: {result.errors}")
+        
+        Analyze quality:
+            if result.quality_score < 0.7:
+                print(f"Low quality scenario: {result.quality_score:.2f}")
+        
+        Review warnings:
+            for warning in result.warnings:
+                print(f"Warning: {warning}")
+        
+        Check parameter clamping:
+            if result.clamped_values:
+                print("Some parameters were automatically corrected:")
+                for field, (original, clamped) in result.clamped_values.items():
+                    print(f"  {field}: {original} -> {clamped}")
+    """
     is_valid: bool
     quality_score: float = 0.0
     errors: List[str] = None
@@ -27,6 +136,7 @@ class ValidationResult:
     clamped_values: Dict[str, Tuple[float, float]] = None  # field_name: (original, clamped)
     
     def __post_init__(self):
+        """Initialize empty lists and dictionaries if None."""
         if self.errors is None:
             self.errors = []
         if self.warnings is None:
@@ -43,19 +153,76 @@ class GuardrailError(Exception):
 
 
 class LLMGuardrails:
-    """Comprehensive guardrails for LLM output validation."""
+    """
+    Comprehensive guardrails for LLM output validation and parameter bounds checking.
+    
+    This class provides a multi-layered validation system for LLM-generated AB test
+    scenarios, ensuring statistical soundness, business context consistency, and
+    realism through comprehensive parameter validation and quality scoring.
+    
+    Features:
+        - Parameter bounds validation with statistical soundness checks
+        - Business context consistency validation (company type, user segment)
+        - Mathematical consistency validation (parameter relationships)
+        - Realism and feasibility assessment
+        - Parameter clamping with automatic correction
+        - Quality scoring with quantitative assessment
+        - Regeneration hints for failed validations
+        - Comprehensive error reporting and suggestions
+    
+    Validation Layers:
+        1. Parameter Bounds: Statistical parameter range validation
+        2. Business Context: Company type and user segment consistency
+        3. Parameter Consistency: Mathematical relationship validation
+        4. Metric Consistency: Proportion-based metric validation
+        5. Realism Checks: Feasibility and business realism assessment
+    
+    Attributes:
+        bounds (Dict[str, Tuple[float, float]]): Parameter bounds for validation
+        business_rules (Dict): Business context validation rules
+    
+    Examples:
+        Basic validation:
+            guardrails = LLMGuardrails()
+            result = guardrails.validate_scenario(scenario_dto)
+        
+        Parameter clamping:
+            clamped_scenario, clamped_values = guardrails.clamp_parameters(scenario_dto)
+        
+        Quality scoring:
+            quality_score = guardrails.get_quality_score(scenario_dto)
+        
+        Regeneration hints:
+            hints = guardrails.generate_regeneration_hints(validation_result)
+    
+    Parameter Bounds:
+        - baseline_conversion_rate: 0.001 to 0.5 (0.1% to 50%)
+        - mde_absolute: 0.001 to 0.1 (0.1% to 10% percentage points)
+        - target_lift_pct: -0.5 to 0.5 (-50% to +50%)
+        - alpha: 0.01 to 0.1 (1% to 10%)
+        - power: 0.7 to 0.95 (70% to 95%)
+        - expected_daily_traffic: 500 to 5,000
+    """
     
     def __init__(self):
-        # Parameter bounds
+        """
+        Initialize the guardrails with parameter bounds and business rules.
+        
+        Sets up the validation system with:
+        - Statistical parameter bounds for AB testing
+        - Business context validation rules
+        - Company type and user segment mappings
+        """
+        # Parameter bounds for statistical validation
         self.bounds = {
-            'baseline_conversion_rate': (0.001, 0.5),
+            'baseline_conversion_rate': (0.001, 0.5),  # 0.1% to 50%
             'mde_absolute': (0.001, 0.1),  # 0.1% to 10% percentage points
-            'target_lift_pct': (-0.5, 0.5),
-            'alpha': (0.01, 0.1),
-            'power': (0.7, 0.95),
-            'expected_daily_traffic': (500, 5000),
-            'treatment_conversion_rate': (0.001, 0.5),
-            'control_conversion_rate': (0.001, 0.5)
+            'target_lift_pct': (-0.5, 0.5),  # -50% to +50%
+            'alpha': (0.01, 0.1),  # 1% to 10%
+            'power': (0.7, 0.95),  # 70% to 95%
+            'expected_daily_traffic': (500, 5000),  # 500 to 5,000 daily visitors
+            'treatment_conversion_rate': (0.001, 0.5),  # 0.1% to 50%
+            'control_conversion_rate': (0.001, 0.5)  # 0.1% to 50%
         }
         
         # Business context validation rules

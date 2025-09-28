@@ -1,8 +1,71 @@
 """
-Integration layer between LLM outputs and core simulation engine.
+Integration Module - Complete LLM to Simulation Pipeline
 
-This module converts LLM-generated scenarios into core domain types
-and orchestrates the complete simulation pipeline.
+This module provides the complete end-to-end pipeline from LLM scenario generation
+to simulation analysis. It serves as the bridge between the LLM integration layer
+and the core mathematical simulation engine, orchestrating the entire process.
+
+Key Features:
+- Complete end-to-end pipeline orchestration
+- Seamless conversion between DTOs and core domain types
+- Statistical analysis integration with core engine
+- LLM expectation comparison and analysis
+- Comprehensive pipeline results and reporting
+- Error handling and graceful degradation
+- Performance monitoring and statistics
+
+Pipeline Steps:
+1. Scenario Generation: Generate scenario using LLM with validation
+2. Type Conversion: Convert DTOs to core domain types
+3. Sample Size Calculation: Calculate required sample sizes
+4. Data Simulation: Generate realistic trial data
+5. Statistical Analysis: Perform comprehensive statistical tests
+6. LLM Comparison: Compare actual vs expected results
+
+Integration Components:
+- LLMIntegration: Main integration orchestrator
+- SimulationPipelineResult: Complete pipeline results
+- Type conversion utilities for DTOs to core types
+- Statistical analysis integration
+- LLM expectation comparison logic
+
+Core Integration:
+- Seamless conversion between LLM DTOs and core domain types
+- Integration with core.design for sample size calculations
+- Integration with core.simulate for data generation
+- Integration with core.analyze for statistical analysis
+- Comprehensive error handling and recovery
+
+Results and Reporting:
+- Detailed pipeline results with all intermediate steps
+- Performance metrics and timing information
+- LLM vs actual results comparison
+- Comprehensive error reporting and suggestions
+- Pipeline summary generation
+
+Usage Examples:
+    Basic pipeline:
+        integration = create_llm_integration(provider="mock")
+        result = await integration.run_complete_pipeline()
+    
+    With custom settings:
+        result = await integration.run_complete_pipeline(
+            max_attempts=5,
+            min_quality_score=0.8
+        )
+    
+    Pipeline summary:
+        summary = integration.get_pipeline_summary(result)
+
+Dependencies:
+- llm.generator: Scenario generation orchestration
+- llm.parser: JSON parsing and validation
+- core.types: Core domain types and models
+- core.design: Sample size calculations
+- core.simulate: Data simulation engine
+- core.analyze: Statistical analysis engine
+- schemas: DTOs for API boundaries
+- asyncio: Async support for concurrent operations
 """
 
 import logging
@@ -31,7 +94,54 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SimulationPipelineResult:
-    """Result of the complete simulation pipeline."""
+    """
+    Comprehensive result dataclass for the complete simulation pipeline.
+    
+    This dataclass encapsulates all information about a complete pipeline run,
+    including the generated scenario, all intermediate results, final analysis,
+    and comprehensive metadata for monitoring and debugging.
+    
+    Attributes:
+        success (bool): Whether the entire pipeline completed successfully
+        scenario_dto (Optional[ScenarioResponseDTO]): Generated scenario from LLM
+        design_params (Optional[DesignParams]): Core domain design parameters
+        sample_size (Optional[Dict]): Sample size calculation results
+        simulation_result (Optional[SimResult]): Data simulation results
+        analysis_result (Optional[AnalysisResult]): Statistical analysis results
+        comparison (Optional[Dict]): LLM vs actual results comparison
+        errors (List[str]): List of errors encountered during pipeline execution
+        warnings (List[str]): List of warnings about the pipeline results
+    
+    Pipeline Components:
+        - Scenario Generation: LLM-generated scenario with validation
+        - Type Conversion: DTOs converted to core domain types
+        - Sample Size Calculation: Required sample sizes computed
+        - Data Simulation: Realistic trial data generated
+        - Statistical Analysis: Comprehensive statistical tests performed
+        - LLM Comparison: Actual vs expected results compared
+    
+    Examples:
+        Check pipeline success:
+            result = await integration.run_complete_pipeline()
+            if result.success:
+                print("Pipeline completed successfully!")
+            else:
+                print(f"Pipeline failed: {result.errors}")
+        
+        Access pipeline results:
+            scenario = result.scenario_dto
+            analysis = result.analysis_result
+            comparison = result.comparison
+        
+        Monitor performance:
+            if result.warnings:
+                for warning in result.warnings:
+                    print(f"Warning: {warning}")
+        
+        Generate summary:
+            summary = integration.get_pipeline_summary(result)
+            print(f"P-value: {summary['analysis']['p_value']:.4f}")
+    """
     success: bool
     scenario_dto: Optional[ScenarioResponseDTO] = None
     design_params: Optional[DesignParams] = None
@@ -43,6 +153,7 @@ class SimulationPipelineResult:
     warnings: List[str] = None
     
     def __post_init__(self):
+        """Initialize empty lists for errors and warnings if None."""
         if self.errors is None:
             self.errors = []
         if self.warnings is None:
@@ -55,9 +166,68 @@ class LLMIntegrationError(Exception):
 
 
 class LLMIntegration:
-    """Integration layer between LLM outputs and core simulation engine."""
+    """
+    Integration layer between LLM outputs and core simulation engine.
+    
+    This class provides the complete end-to-end pipeline from LLM scenario generation
+    to simulation analysis. It serves as the bridge between the LLM integration layer
+    and the core mathematical simulation engine, orchestrating the entire process.
+    
+    Features:
+        - Complete end-to-end pipeline orchestration
+        - Seamless conversion between DTOs and core domain types
+        - Statistical analysis integration with core engine
+        - LLM expectation comparison and analysis
+        - Comprehensive pipeline results and reporting
+        - Error handling and graceful degradation
+        - Performance monitoring and statistics
+    
+    Pipeline Steps:
+        1. Scenario Generation: Generate scenario using LLM with validation
+        2. Type Conversion: Convert DTOs to core domain types
+        3. Sample Size Calculation: Calculate required sample sizes
+        4. Data Simulation: Generate realistic trial data
+        5. Statistical Analysis: Perform comprehensive statistical tests
+        6. LLM Comparison: Compare actual vs expected results
+    
+    Attributes:
+        generator (LLMScenarioGenerator): Scenario generator for LLM interactions
+        parser (LLMOutputParser): Parser for LLM JSON responses
+    
+    Examples:
+        Basic pipeline:
+            integration = LLMIntegration(generator)
+            result = await integration.run_complete_pipeline()
+        
+        With custom settings:
+            result = await integration.run_complete_pipeline(
+                max_attempts=5,
+                min_quality_score=0.8
+            )
+        
+        Pipeline summary:
+            summary = integration.get_pipeline_summary(result)
+    
+    Core Integration:
+        - Seamless conversion between LLM DTOs and core domain types
+        - Integration with core.design for sample size calculations
+        - Integration with core.simulate for data generation
+        - Integration with core.analyze for statistical analysis
+        - Comprehensive error handling and recovery
+    """
     
     def __init__(self, generator: LLMScenarioGenerator):
+        """
+        Initialize the integration layer with the provided scenario generator.
+        
+        Args:
+            generator (LLMScenarioGenerator): The scenario generator to use for
+                LLM interactions and scenario generation
+        
+        Note:
+            The integration automatically initializes its parser for JSON
+            parsing and validation operations.
+        """
         self.generator = generator
         self.parser = LLMOutputParser()
     
