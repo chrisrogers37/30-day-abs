@@ -15,8 +15,8 @@ Key Features:
 - Robust error recovery and handling
 
 Parsing Strategies:
-1. Markdown code block extraction (`\`\`\`json ... \`\`\``)
-2. Generic code block extraction (`\`\`\` ... \`\`\``)
+1. Markdown code block extraction (```json ... ```)
+2. Generic code block extraction (``` ... ```)
 3. Raw JSON object detection
 4. Fallback boundary detection with brace matching
 
@@ -173,8 +173,8 @@ class LLMOutputParser:
         - Robust error recovery and handling
     
     Parsing Strategies:
-        1. Markdown code block extraction (`\`\`\`json ... \`\`\``)
-        2. Generic code block extraction (`\`\`\` ... \`\`\``)
+        1. Markdown code block extraction (```json ... ```)
+        2. Generic code block extraction (``` ... ```)
         3. Raw JSON object detection
         4. Fallback boundary detection with brace matching
     
