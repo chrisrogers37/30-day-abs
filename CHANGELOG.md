@@ -157,6 +157,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Complex Installation**: Simplified setup instructions for contributors only
 - **Outdated References**: Removed references to non-existent files and directories
 
+## [1.4.0] - 2025-01-16
+
+### Fixed
+- **Question 7 AttributeError**: Fixed data structure access for `target_lift_pct` and `mde_absolute` in rollout decision validation
+- **Indentation Errors**: Resolved multiple Python indentation errors in streamlit_app.py
+- **UnboundLocalError**: Fixed variable scope issues by moving design parameter definitions outside conditional blocks
+- **Default Selection Issue**: Removed default selection from Question 7 dropdown to prevent immediate incorrect feedback
+- **Validation Sync Issue**: Fixed discrepancy between inline validation and final scoring for Question 6 confidence interval
+- **Error Message Improvements**: Enhanced error messages to be more encouraging without revealing correct answers
+- **Redundant Answer Display**: Removed redundant answer display from correct responses
+
+### Improved
+- **User Experience**: Question 7 now requires active selection before validation, preventing immediate incorrect feedback
+- **Error Handling**: More encouraging error messages that don't spoil the learning experience
+- **Validation Consistency**: Inline validation and final scoring now produce consistent results
+- **Code Quality**: Fixed multiple syntax and indentation issues for better maintainability
+
+### Technical Improvements
+- **Data Structure Access**: Corrected attribute access from `llm_expected` to `design_params` for business targets
+- **Answer Transformation**: Added logic to convert separate confidence interval values to tuple format for scoring
+- **Variable Scoping**: Proper variable definitions to prevent scope-related errors
+- **Code Organization**: Improved code structure and error handling throughout the application
+
 ## [Unreleased]
 
 ### Planned

@@ -407,7 +407,7 @@ def validate_analysis_question_answer(question_num, user_answer):
     # Get business target for Question 7
     business_target_absolute = None
     if question_num == 7 and st.session_state.scenario_data:
-        business_target_absolute = st.session_state.scenario_data.scenario.llm_expected.mde_absolute
+        business_target_absolute = st.session_state.scenario_data.design_params.mde_absolute
     
     # Use core validation
     validation_result = validate_analysis_answer(question_num, user_answer, sim_result, business_target_absolute)
@@ -794,8 +794,8 @@ def ask_single_analysis_question(question_num):
         st.markdown("*Hint: Compare the confidence interval bounds to the business target lift*")
         
         # Get business target from scenario
-        business_target_pct = st.session_state.scenario_data.scenario.llm_expected.target_lift_pct * 100
-        business_target_absolute = st.session_state.scenario_data.scenario.llm_expected.mde_absolute * 100
+        business_target_pct = st.session_state.scenario_data.design_params.target_lift_pct * 100
+        business_target_absolute = st.session_state.scenario_data.design_params.mde_absolute * 100
         
         st.info(f"**Business Target:** {business_target_pct:.1f}% relative lift ({business_target_absolute:.2f}% absolute lift)")
         
@@ -807,6 +807,7 @@ def ask_single_analysis_question(question_num):
                 "proceed_with_caution": "Proceed with Caution", 
                 "do_not_proceed": "Do Not Proceed"
             }[x],
+            index=None,  # No default selection
             key="rollout_decision_input"
         )
         st.session_state.analysis_answers["rollout_decision"] = rollout_decision
@@ -816,10 +817,10 @@ def ask_single_analysis_question(question_num):
             is_correct, correct_answer = validate_analysis_question_answer(7, rollout_decision)
             if is_correct is not None:
                 if is_correct:
-                    st.success(f"✅ Correct! {correct_answer}")
+                    st.success("✅ Correct!")
                     st.session_state.completed_analysis_questions.add(7)
                 else:
-                    st.error(f"❌ Incorrect. {correct_answer}")
+                    st.error("❌ Incorrect. Try again.")
                     st.info("💡 Consider: Is the business target achievable within the confidence interval?")
 
 def ask_data_analysis_questions():
@@ -867,13 +868,23 @@ def score_data_analysis_answers(user_answers, sim_result):
     """Score data analysis questions against simulation results."""
     logger.info("🔍 Starting data analysis answers scoring...")
     
+    # Transform answers to match expected format
+    transformed_answers = user_answers.copy()
+    
+    # Convert confidence interval from separate ci_lower/ci_upper to tuple
+    if "ci_lower" in user_answers and "ci_upper" in user_answers:
+        ci_lower = user_answers.get("ci_lower")
+        ci_upper = user_answers.get("ci_upper")
+        if ci_lower is not None and ci_upper is not None:
+            transformed_answers["confidence_interval"] = (ci_lower, ci_upper)
+    
     # Get business target for Question 7
     business_target_absolute = None
     if st.session_state.scenario_data:
-        business_target_absolute = st.session_state.scenario_data.scenario.llm_expected.mde_absolute
+        business_target_absolute = st.session_state.scenario_data.design_params.mde_absolute
     
     # Use core scoring
-    scoring_result = score_analysis_answers(user_answers, sim_result, business_target_absolute)
+    scoring_result = score_analysis_answers(transformed_answers, sim_result, business_target_absolute)
     return scoring_result.scores, scoring_result.total_score, scoring_result.max_score
 
 
@@ -966,9 +977,6 @@ def main():
     """Main Streamlit app."""
     initialize_session_state()
     
-    # Header
-    st.markdown('<div class="main-header">30 Day A/Bs</div>', unsafe_allow_html=True)
-    
     # Sidebar
     with st.sidebar:
         st.markdown("### 🎯 Practice Session")
@@ -1017,70 +1025,88 @@ def main():
         
         # Show scenario specs if available
         if st.session_state.scenario_data:
-            st.markdown("### 📋 Scenario Specs")
+            # Initialize session state for answers visibility
+            if "answers_visible" not in st.session_state:
+                st.session_state.answers_visible = False
+            
+            # Button for showing/hiding answers
+            if st.session_state.answers_visible:
+                if st.button("🙈 Hide Answers", key="hide_answers_button"):
+                    st.session_state.answers_visible = False
+                    st.rerun()
+            else:
+                if st.button("🔍 Show Answers", key="show_answers_button"):
+                    st.session_state.answers_visible = True
+                    st.rerun()
+            
+            # Get design parameters for calculations
             scenario = st.session_state.scenario_data.scenario
             design = st.session_state.scenario_data.design_params
             
-            # Calculate absolute lift in percentage points
-            st.markdown(f"**Baseline:** {design.baseline_conversion_rate:.1%}")
-            st.markdown(f"**MDE (absolute):** {design.mde_absolute:.1%}")
-            st.markdown(f"**Target Relative Lift:** {design.target_lift_pct:.1%}")
-            st.markdown(f"**Daily Traffic:** {design.expected_daily_traffic:,}")
-            st.markdown(f"**Alpha:** {design.alpha}")
-            st.markdown(f"**Power:** {design.power:.1%}")
-            
-            # Add correct answers for questions 4, 5, 6
-            from core.design import compute_sample_size
-            from core.types import DesignParams, Allocation
-            
-            # Calculate correct sample size (Question 4)
-            design_params = DesignParams(
-                baseline_conversion_rate=design.baseline_conversion_rate,
-                target_lift_pct=design.target_lift_pct,
-                alpha=design.alpha,
-                power=design.power,
-                allocation=Allocation(0.5, 0.5),
-                expected_daily_traffic=design.expected_daily_traffic
-            )
-            sample_size_result = compute_sample_size(design_params)
-            correct_sample_size = sample_size_result.per_arm
-            
-            # Calculate correct duration (Question 5)
-            required_sample_size = correct_sample_size * 2  # Total sample size
-            correct_duration = max(1, round(required_sample_size / design.expected_daily_traffic))
-            
-            # Calculate correct additional conversions (Question 6)
-            correct_additional_conversions = round(design.expected_daily_traffic * design.mde_absolute)
-            
-            st.markdown("---")
-            st.markdown(f"**Sample Size (per group):** {correct_sample_size:,}")
-            st.markdown(f"**Duration:** {correct_duration} days")
-            st.markdown(f"**Additional Conversions/Day:** {correct_additional_conversions}")
-            
-            # Add simulation results if available
-            if st.session_state.simulation_results:
-                sim_result = st.session_state.simulation_results
+            if st.session_state.answers_visible:
+                st.markdown("### 📋 Scenario Specs")
+                
+                # Calculate absolute lift in percentage points
+                st.markdown(f"**Baseline:** {design.baseline_conversion_rate:.1%}")
+                st.markdown(f"**MDE (absolute):** {design.mde_absolute:.1%}")
+                st.markdown(f"**Target Relative Lift:** {design.target_lift_pct:.1%}")
+                st.markdown(f"**Daily Traffic:** {design.expected_daily_traffic:,}")
+                st.markdown(f"**Alpha:** {design.alpha}")
+                st.markdown(f"**Power:** {design.power:.1%}")
+                
+                # Add correct answers for questions 4, 5, 6
+                from core.design import compute_sample_size
+                from core.types import DesignParams, Allocation
+                
+                # Calculate correct sample size (Question 4)
+                design_params = DesignParams(
+                    baseline_conversion_rate=design.baseline_conversion_rate,
+                    target_lift_pct=design.target_lift_pct,
+                    alpha=design.alpha,
+                    power=design.power,
+                    allocation=Allocation(0.5, 0.5),
+                    expected_daily_traffic=design.expected_daily_traffic
+                )
+                sample_size_result = compute_sample_size(design_params)
+                correct_sample_size = sample_size_result.per_arm
+                
+                # Calculate correct duration (Question 5)
+                required_sample_size = correct_sample_size * 2  # Total sample size
+                correct_duration = max(1, round(required_sample_size / design.expected_daily_traffic))
+                
+                # Calculate correct additional conversions (Question 6)
+                correct_additional_conversions = round(design.expected_daily_traffic * design.mde_absolute)
+                
                 st.markdown("---")
-                st.markdown("**📊 Actual Results:**")
-                st.markdown(f"**Control Rate:** {sim_result.control_rate:.3%}")
-                st.markdown(f"**Treatment Rate:** {sim_result.treatment_rate:.3%}")
-                st.markdown(f"**Control Users:** {sim_result.control_n:,}")
-                st.markdown(f"**Treatment Users:** {sim_result.treatment_n:,}")
-                st.markdown(f"**Control Conversions:** {sim_result.control_conversions:,}")
-                st.markdown(f"**Treatment Conversions:** {sim_result.treatment_conversions:,}")
+                st.markdown("### 🎯 Design Answers")
+                st.markdown(f"**Sample Size (per group):** {correct_sample_size:,}")
+                st.markdown(f"**Duration:** {correct_duration} days")
+                st.markdown(f"**Additional Conversions/Day:** {correct_additional_conversions}")
                 
-                # Calculate and display lift metrics using core properties
-                absolute_lift = sim_result.absolute_lift * 100
-                relative_lift = sim_result.relative_lift_pct * 100
-                st.markdown(f"**Absolute Lift:** {absolute_lift:.3f} pp")
-                st.markdown(f"**Relative Lift:** {relative_lift:.1f}%")
-                
-                # Use core analysis for statistical metrics
-                if st.session_state.analysis_results:
-                    analysis = st.session_state.analysis_results
-                    st.markdown(f"**P-value:** {analysis.p_value:.3f}")
-                    ci_lower, ci_upper = analysis.confidence_interval
-                    st.markdown(f"**95% CI:** [{ci_lower*100:.2f}%, {ci_upper*100:.2f}%]")
+                # Add simulation results if available
+                if st.session_state.simulation_results:
+                    sim_result = st.session_state.simulation_results
+                    st.markdown("---")
+                    st.markdown("### 📊 Actual Results")
+                    st.markdown(f"**Control Rate:** {sim_result.control_rate:.3%}")
+                    st.markdown(f"**Treatment Rate:** {sim_result.treatment_rate:.3%}")
+                    st.markdown(f"**Control Users:** {sim_result.control_n:,}")
+                    st.markdown(f"**Treatment Users:** {sim_result.treatment_n:,}")
+                    st.markdown(f"**Control Conversions:** {sim_result.control_conversions:,}")
+                    st.markdown(f"**Treatment Conversions:** {sim_result.treatment_conversions:,}")
+                    
+                    # Calculate and display lift metrics using core properties
+                    absolute_lift = sim_result.absolute_lift * 100
+                    relative_lift = sim_result.relative_lift_pct * 100
+                    st.markdown(f"**Absolute Lift:** {absolute_lift:.3f} pp")
+                    st.markdown(f"**Relative Lift:** {relative_lift:.1f}%")
+                    
+                    # Use core analysis for statistical metrics
+                    if st.session_state.analysis_results:
+                        analysis = st.session_state.analysis_results
+                        st.markdown(f"**P-value:** {analysis.p_value:.3f}")
+                        ci_lower, ci_upper = analysis.confidence_interval
+                        st.markdown(f"**95% CI:** [{ci_lower*100:.2f}%, {ci_upper*100:.2f}%]")
             
             # Navigation buttons
             st.markdown("### 🔄 Navigation")
@@ -1096,25 +1122,132 @@ def main():
     
     # Main content
     if not st.session_state.scenario_data:
-        st.markdown("### 👋 Welcome to 30 Day A/Bs!")
+        # Hero Section
         st.markdown("""
-        This tool helps you practice A/B test analysis for interviews by:
+        <div style="text-align: center; padding: 2rem 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin-bottom: 2rem;">
+            <h1 style="color: white; font-size: 3rem; margin-bottom: 1rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">🧪 30 Day A/Bs</h1>
+            <p style="color: white; font-size: 1.3rem; margin-bottom: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Master A/B Testing for Data Science Interviews</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        1. **Reading the experiment case** - AI-generated realistic scenarios
-        2. **Sizing the experiment** - Calculate sample size, MDE, power
-        3. **Analyzing the data** - Download CSV and run your own analysis
-        4. **Getting scored feedback** - Compare your answers to correct ones
-        
-        Click "Generate New Scenario" in the sidebar to get started!
-        """)
-        
-        st.markdown("### 🎯 What You'll Practice")
+        # Value Proposition
         st.markdown("""
-        - **Experiment sizing** (sample size, MDE, power calculations)
-        - **Statistical significance testing** (p-values, confidence intervals)
-        - **Business interpretation** (lift, revenue impact)
-        - **Decision making** (rollout recommendations)
-        """)
+        <div style="background-color: #f8f9fa; padding: 2rem; border-radius: 10px; border-left: 5px solid #28a745; margin-bottom: 1rem;">
+            <h2 style="color: #2c3e50; margin-bottom: 1rem;">🎯 Why This Tool?</h2>
+            <p style="font-size: 1.1rem; color: #495057; margin-bottom: 1.5rem;">
+                A/B testing is one of the most common interview topics for data science roles. 
+                This interactive simulator goes beyond static examples by <strong>generating unique business scenarios</strong> with AI, 
+                <strong>simulating real experimental datasets</strong>, and providing <strong>Jupyter notebooks</strong> for hands-on analysis - 
+                giving you the complete end-to-end experience you might face in a work environment.
+            </p>
+            <div style="display: flex; justify-content: space-around; text-align: center; margin-top: 1.5rem; margin-bottom: 0;">
+                <div style="flex: 1; padding: 0 1rem;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                    <div style="font-weight: bold; color: #28a745;">Real Scenarios</div>
+                </div>
+                <div style="flex: 1; padding: 0 1rem;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎓</div>
+                    <div style="font-weight: bold; color: #28a745;">Instant Feedback</div>
+                </div>
+                <div style="flex: 1; padding: 0 1rem;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚡</div>
+                    <div style="font-weight: bold; color: #28a745;">Interview Ready</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown("""
+            <div style="text-align: center; padding: 1.5rem; background-color: #e3f2fd; border-radius: 10px; height: 240px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                <div style="flex: 0 0 auto; padding-top: 1rem;">
+                    <h3 style="color: #1976d2; margin-bottom: 0.5rem;">Read Scenario</h3>
+                </div>
+                <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                    <p style="font-size: 0.85rem; color: #424242; line-height: 1.3; margin: 0;">AI-generated realistic business cases with proper statistical parameters</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div style="text-align: center; padding: 1.5rem; background-color: #fff3e0; border-radius: 10px; height: 240px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                <div style="flex: 0 0 auto; padding-top: 1rem;">
+                    <h3 style="color: #f57c00; margin-bottom: 0.5rem;">Design Test</h3>
+                </div>
+                <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                    <p style="font-size: 0.85rem; color: #424242; line-height: 1.3; margin: 0;">Calculate sample size, MDE, power, and experiment duration</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div style="text-align: center; padding: 1.5rem; background-color: #e8f5e8; border-radius: 10px; height: 240px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                <div style="flex: 0 0 auto; padding-top: 1rem;">
+                    <h3 style="color: #388e3c; margin-bottom: 0.5rem;">Analyze Data</h3>
+                </div>
+                <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                    <p style="font-size: 0.85rem; color: #424242; line-height: 1.3; margin: 0;">Download CSV data and perform statistical analysis</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            st.markdown("""
+            <div style="text-align: center; padding: 1.5rem; background-color: #f3e5f5; border-radius: 10px; height: 240px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                <div style="flex: 0 0 auto; padding-top: 1rem;">
+                    <h3 style="color: #7b1fa2; margin-bottom: 0.5rem;">Get Feedback</h3>
+                </div>
+                <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                    <p style="font-size: 0.85rem; color: #424242; line-height: 1.3; margin: 0;">Compare your answers with correct solutions and explanations</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+
+        # Call to Action
+        st.markdown("""
+        <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin: 2rem 0;">
+            <h3 style="color: white; margin-bottom: 1rem;">Ready to Practice?</h3>
+            <p style="color: white; font-size: 1.1rem; margin-bottom: 1.5rem;">Generate your first scenario and start mastering A/B testing!</p>
+            <div style="font-size: 1.2rem; color: #ffd700;">✨ Click "Generate New Scenario" in the sidebar to begin</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Key Differentiators
+        st.markdown("### 🚀 What Makes This Different")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            <div style="text-align: center; padding: 1rem;">
+                <div style="font-size: 2rem; color: #6f42c1; font-weight: bold;">∞</div>
+                <div style="color: #6c757d; font-weight: bold;">Unique Scenarios</div>
+                <div style="font-size: 0.9rem; color: #6c757d;">AI-generated realistic business cases</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div style="text-align: center; padding: 1rem;">
+                <div style="font-size: 2rem; color: #007bff; font-weight: bold;">📊</div>
+                <div style="color: #6c757d; font-weight: bold;">Real Data</div>
+                <div style="font-size: 0.9rem; color: #6c757d;">Simulates actual experimental datasets</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div style="text-align: center; padding: 1rem;">
+                <div style="font-size: 2rem; color: #28a745; font-weight: bold;">⚡</div>
+                <div style="color: #6c757d; font-weight: bold;">Instant Feedback</div>
+                <div style="font-size: 0.9rem; color: #6c757d;">Immediately understand your results</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         return
     
@@ -1131,8 +1264,8 @@ def main():
         # Show scenario first
         display_scenario(st.session_state.scenario_data)
         
-        # Add notebook download option
-        st.markdown("### 📓 Design Framework")
+        # Add main header and notebook download option
+        st.markdown("### 🎯 Design the Experiment")
         st.markdown("Download this Jupyter notebook to work through the calculations for the design questions:")
         create_notebook_download()
         
@@ -1150,7 +1283,6 @@ def main():
                 st.markdown("---")  # Add separator between questions
             else:
                 # Show locked question message
-                st.markdown(f"### 🎯 Step 2: Design the Experiment")
                 st.markdown(f"**Question {q_num} of {MAX_DESIGN_QUESTIONS}**")
                 st.warning(f"⚠️ Please complete Question {q_num - 1} correctly before proceeding to Question {q_num}")
                 st.info("💡 Go back and answer the previous question correctly to unlock this question")
