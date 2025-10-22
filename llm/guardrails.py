@@ -76,7 +76,6 @@ Dependencies:
 - logging: Built-in logging support
 """
 
-import logging
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
@@ -84,7 +83,9 @@ from schemas.scenario import ScenarioResponseDTO
 from schemas.design import DesignParamsDTO
 from schemas.shared import CompanyType, UserSegment
 
-logger = logging.getLogger(__name__)
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass

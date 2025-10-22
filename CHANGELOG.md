@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2025-01-22
+
+### Added
+- **Centralized Logging System**: Unified logging configuration in `core/logging.py`
+- **Quiz Session Logging**: Structured logging for complete user quiz journeys
+- **Session Tracking**: Unique session IDs with detailed progress logging
+- **Clean Terminal Output**: Organized, readable logs for end-to-end quiz sessions
+- **Log File Management**: Automatic log rotation and organized file structure
+
+### Enhanced
+- **Streamlit Integration**: Quiz session logging integrated into UI workflow
+- **Logging Tests**: 14 comprehensive tests for quiz logging functionality
+- **Documentation**: Updated README with logging configuration and examples
+
+### Technical Improvements
+- **Consolidated Architecture**: Single logging module instead of duplicate systems
+- **Structured Output**: Visual separators and organized log sections
+- **Performance Tracking**: Session duration and timing metrics
+- **Error Handling**: Graceful logging error management
+
 ## [1.5.0] - 2025-01-22
 
 ### Added

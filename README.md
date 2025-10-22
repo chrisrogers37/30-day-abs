@@ -86,6 +86,53 @@ open htmlcov/index.html
 
 See the [Testing Guide](development_docs/TESTING_GUIDE.md) for detailed testing documentation.
 
+## Logging
+
+The application uses a centralized logging system for clean, structured output:
+
+```bash
+# Quiz sessions are logged to individual files
+ls logs/quiz_session_*.log
+
+# General application logs
+tail -f logs/app.log
+
+# Configure logging level
+export LOG_LEVEL=DEBUG
+```
+
+### Quiz Session Logging
+
+Each quiz session creates a structured log with:
+- Session metadata (ID, user, timing)
+- Scenario generation details
+- Question-by-question progress
+- Sample size calculations
+- Simulation results
+- Statistical analysis
+- Final scoring and feedback
+
+Example log structure:
+```
+============================================================
+ QUIZ SESSION STARTED
+============================================================
+Session ID: a1b2c3d4
+Started at: 2025-01-22 14:30:15
+------------------------------------------------------------
+============================================================
+ SCENARIO GENERATED
+============================================================
+Title: E-commerce Checkout Optimization
+Company: ShopFast
+Industry: E-commerce
+Baseline Conversion: 2.5%
+Target Lift: 20.0%
+Daily Traffic: 10,000
+Business Context: Improve checkout conversion rates
+------------------------------------------------------------
+```
+
 ## Architecture
 
 ```

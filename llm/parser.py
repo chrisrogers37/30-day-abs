@@ -74,7 +74,6 @@ Dependencies:
 """
 
 import json
-import logging
 import re
 from typing import Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
@@ -85,12 +84,9 @@ from schemas.scenario import ScenarioResponseDTO, ScenarioDTO, LlmExpectedDTO
 from schemas.design import DesignParamsDTO
 from schemas.shared import AllocationDTO
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass

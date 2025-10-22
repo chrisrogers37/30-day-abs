@@ -71,7 +71,6 @@ Dependencies:
 """
 
 import asyncio
-import logging
 import time
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
@@ -84,12 +83,9 @@ from .guardrails import LLMGuardrails, ValidationResult
 from schemas.scenario import ScenarioResponseDTO, ScenarioRequestDTO
 from schemas.shared import CompanyType, UserSegment
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass

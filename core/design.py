@@ -9,6 +9,9 @@ import math
 from typing import Optional
 
 from .types import DesignParams, SampleSize
+from .logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def compute_sample_size(params: DesignParams) -> SampleSize:
@@ -108,8 +111,6 @@ def _get_z_score(alpha: float, direction: str) -> float:
                 z_score = 1.282
     
     # Log z-score calculation for debugging
-    import logging
-    logger = logging.getLogger(__name__)
     logger.debug(f"Z-score calculation: alpha={alpha:.6f}, direction={direction}, z_score={z_score:.6f}")
     
     return z_score

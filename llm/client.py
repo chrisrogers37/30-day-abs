@@ -64,7 +64,6 @@ Dependencies:
 """
 
 import asyncio
-import logging
 import os
 import time
 from typing import Dict, List, Optional, Union
@@ -75,12 +74,9 @@ import httpx
 from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletion
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class LLMProvider(str, Enum):

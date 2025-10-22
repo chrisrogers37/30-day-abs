@@ -15,7 +15,6 @@ import sys
 import os
 import pandas as pd
 import json
-import logging
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -25,16 +24,12 @@ load_dotenv()
 # Add the parent directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Configure logging for Streamlit app
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# Configure logging for Streamlit
+from core.logging import configure_for_streamlit, get_logger, start_quiz_session, configure_quiz_logging
 
-logger = logging.getLogger(__name__)
+configure_for_streamlit(debug=False)
+configure_quiz_logging()  # Configure quiz session logging
+logger = get_logger(__name__)
 
 # Import our modules
 from llm.client import create_llm_client
@@ -130,6 +125,8 @@ def initialize_session_state():
         st.session_state.completed_analysis_questions = set()
     if 'design_answers' not in st.session_state:
         st.session_state.design_answers = {}  # Store answers as we go
+    if 'quiz_logger' not in st.session_state:
+        st.session_state.quiz_logger = None  # Quiz session logger
 
 def generate_scenario():
     """Generate a new A/B test scenario."""
@@ -434,6 +431,12 @@ def ask_single_design_question(question_num):
         if mde_absolute is not None:
             is_correct, correct_answer = validate_question_answer(1, mde_absolute)
             if is_correct is not None:
+                # Log question answer
+                if st.session_state.quiz_logger:
+                    st.session_state.quiz_logger.log_question_answered(
+                        1, mde_absolute, correct_answer, is_correct
+                    )
+                
                 if is_correct:
                     st.success(f"✅ Correct! {correct_answer}")
                     st.session_state.completed_questions.add(1)
@@ -458,6 +461,12 @@ def ask_single_design_question(question_num):
         if target_conversion_rate is not None:
             is_correct, correct_answer = validate_question_answer(2, target_conversion_rate)
             if is_correct is not None:
+                # Log question answer
+                if st.session_state.quiz_logger:
+                    st.session_state.quiz_logger.log_question_answered(
+                        2, target_conversion_rate, correct_answer, is_correct
+                    )
+                
                 if is_correct:
                     st.success(f"✅ Correct! {correct_answer}")
                     st.session_state.completed_questions.add(2)
@@ -902,6 +911,19 @@ def display_scoring_results(scores, total_score, max_score):
     with col3:
         st.metric("Grade", "A" if percentage >= 90 else "B" if percentage >= 80 else "C" if percentage >= 70 else "D" if percentage >= 60 else "F")
     
+    # Log quiz completion for design questions
+    if st.session_state.quiz_logger:
+        correct_count = sum(1 for result in scores.values() if result["correct"])
+        feedback_lines = []
+        for key, result in scores.items():
+            status = "✅ Correct" if result["correct"] else "❌ Incorrect"
+            feedback_lines.append(f"{key.replace('_', ' ').title()}: {result['user']} ({status})")
+        
+        feedback = "\n".join(feedback_lines)
+        st.session_state.quiz_logger.log_quiz_completed(
+            percentage/100, feedback, max_score, correct_count
+        )
+    
     st.markdown("### 📝 Detailed Feedback")
     
     for key, result in scores.items():
@@ -982,8 +1004,26 @@ def main():
         st.markdown("### 🎯 Practice Session")
         
         if st.button("🔄 Generate New Scenario", type="primary"):
+            # Start new quiz session
+            st.session_state.quiz_logger = start_quiz_session()
+            st.session_state.quiz_logger.log_user_action("New Quiz Session Started")
+            
             st.session_state.scenario_data = generate_scenario()
             if st.session_state.scenario_data:
+                # Log scenario generation
+                scenario_dict = {
+                    'scenario': {
+                        'title': st.session_state.scenario_data.scenario.title,
+                        'company': st.session_state.scenario_data.scenario.company,
+                        'industry': st.session_state.scenario_data.scenario.industry,
+                        'baseline_conversion_rate': st.session_state.scenario_data.design_params.baseline_conversion_rate,
+                        'target_lift_pct': st.session_state.scenario_data.design_params.target_lift_pct,
+                        'expected_daily_traffic': st.session_state.scenario_data.design_params.expected_daily_traffic,
+                        'business_context': st.session_state.scenario_data.scenario.business_context
+                    }
+                }
+                st.session_state.quiz_logger.log_scenario_generated(scenario_dict)
+                
                 st.session_state.design_answers = {}
                 st.session_state.design_scoring_results = None
                 st.session_state.current_question = 1  # Reset to first question
@@ -997,6 +1037,45 @@ def main():
                 st.session_state.simulation_results = sim_result
                 st.session_state.analysis_results = analysis_result
                 st.session_state.sample_size_result = sample_size_result
+                
+                # Log simulation and analysis results
+                if st.session_state.quiz_logger:
+                    # Log sample size calculation
+                    design_params_dict = {
+                        'alpha': st.session_state.scenario_data.design_params.alpha,
+                        'power': st.session_state.scenario_data.design_params.power,
+                        'baseline_conversion_rate': st.session_state.scenario_data.design_params.baseline_conversion_rate,
+                        'target_lift_pct': st.session_state.scenario_data.design_params.target_lift_pct
+                    }
+                    sample_size_dict = {
+                        'per_arm': sample_size_result.per_arm,
+                        'total': sample_size_result.total,
+                        'days_required': sample_size_result.days_required,
+                        'power_achieved': sample_size_result.power_achieved
+                    }
+                    st.session_state.quiz_logger.log_sample_size_calculation(design_params_dict, sample_size_dict)
+                    
+                    # Log simulation results
+                    sim_dict = {
+                        'control_n': sim_result.control_n,
+                        'control_conversions': sim_result.control_conversions,
+                        'control_rate': sim_result.control_rate,
+                        'treatment_n': sim_result.treatment_n,
+                        'treatment_conversions': sim_result.treatment_conversions,
+                        'treatment_rate': sim_result.treatment_rate,
+                        'absolute_lift': sim_result.absolute_lift,
+                        'relative_lift_pct': sim_result.relative_lift_pct
+                    }
+                    st.session_state.quiz_logger.log_simulation_results(sim_dict)
+                    
+                    # Log analysis results
+                    analysis_dict = {
+                        'p_value': analysis_result.p_value,
+                        'significant': analysis_result.significant,
+                        'confidence_interval': str(analysis_result.confidence_interval),
+                        'recommendation': analysis_result.recommendation
+                    }
+                    st.session_state.quiz_logger.log_analysis_results(analysis_dict)
         
         st.markdown("### 📊 Session Progress")
         if st.session_state.scenario_data:
