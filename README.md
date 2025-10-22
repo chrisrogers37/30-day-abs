@@ -54,6 +54,9 @@ cd 30-day-abs
 # Install dependencies
 pip install -r requirements.txt
 
+# Install development dependencies (for testing and contributing)
+pip install -r requirements-dev.txt
+
 # Run the app
 streamlit run ui/streamlit_app.py
 ```
@@ -62,6 +65,26 @@ streamlit run ui/streamlit_app.py
 ```bash
 echo "OPENAI_API_KEY=your_key_here" > .env
 ```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=core --cov=llm --cov=schemas --cov-report=html
+
+# Run specific test types
+pytest -m unit              # Unit tests only
+pytest -m integration       # Integration tests only
+pytest tests/core/          # Core module tests only
+
+# View coverage report
+open htmlcov/index.html
+```
+
+See the [Testing Guide](development_docs/TESTING_GUIDE.md) for detailed testing documentation.
 
 ## Architecture
 
