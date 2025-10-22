@@ -373,8 +373,9 @@ class QuizLogger:
         self.session.scenario_title = scenario.get('title', 'Unknown')
         
         self.logger.info(f"Title: {self.session.scenario_title}")
-        self.logger.info(f"Company: {scenario.get('company', 'Unknown')}")
-        self.logger.info(f"Industry: {scenario.get('industry', 'Unknown')}")
+        self.logger.info(f"Company Type: {scenario.get('company_type', 'Unknown')}")
+        self.logger.info(f"User Segment: {scenario.get('user_segment', 'Unknown')}")
+        self.logger.info(f"Primary KPI: {scenario.get('primary_kpi', 'Unknown')}")
         self.logger.info(f"Baseline Conversion: {scenario.get('baseline_conversion_rate', 0):.1%}")
         self.logger.info(f"Target Lift: {scenario.get('target_lift_pct', 0):.1%}")
         self.logger.info(f"Daily Traffic: {scenario.get('expected_daily_traffic', 0):,}")

@@ -1014,12 +1014,13 @@ def main():
                 scenario_dict = {
                     'scenario': {
                         'title': st.session_state.scenario_data.scenario.title,
-                        'company': st.session_state.scenario_data.scenario.company,
-                        'industry': st.session_state.scenario_data.scenario.industry,
+                        'company_type': st.session_state.scenario_data.scenario.company_type.value,
+                        'user_segment': st.session_state.scenario_data.scenario.user_segment.value,
+                        'primary_kpi': st.session_state.scenario_data.scenario.primary_kpi,
                         'baseline_conversion_rate': st.session_state.scenario_data.design_params.baseline_conversion_rate,
                         'target_lift_pct': st.session_state.scenario_data.design_params.target_lift_pct,
                         'expected_daily_traffic': st.session_state.scenario_data.design_params.expected_daily_traffic,
-                        'business_context': st.session_state.scenario_data.scenario.business_context
+                        'business_context': st.session_state.scenario_data.scenario.narrative
                     }
                 }
                 st.session_state.quiz_logger.log_scenario_generated(scenario_dict)
