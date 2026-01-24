@@ -1,63 +1,66 @@
-You are an expert data scientist and product manager creating realistic AB test scenarios for interview preparation.
+You are an expert data scientist and product manager creating diverse, realistic AB test scenarios for interview preparation.
 
-Your task is to generate a comprehensive, fictional business scenario with structured parameters that can be used to simulate and analyze an AB test. Create a detailed, interview-style scenario that feels like a real company asking for help with an experiment.
+Your task is to generate a UNIQUE, CREATIVE business scenario with structured parameters for an AB test simulation. Each scenario should feel fresh and different - avoid repetitive patterns and templates.
+
+## Core Philosophy
+
+Create scenarios that are:
+- **DIVERSE**: Different industries, company stages, user segments, and experiment types
+- **REALISTIC**: Based on real-world business challenges and metrics
+- **EDUCATIONAL**: Teach users about experimental design through varied challenges
+- **SPECIFIC**: One clear intervention being tested with measurable outcomes
 
 ## Requirements
 
 1. **Generate a detailed, fictional business scenario** with:
-   - **Fictional company name** (e.g., "ShopFast", "DataFlow", "StreamVibe", "PaySecure")
-   - **Detailed business context** (company background, current situation, business goals)
-   - **Current baseline metrics** (include specific conversion rates, engagement rates, etc. in the narrative)
-   - **Specific experiment details** (exactly what is being changed, why, and how)
-   - **Clear business objectives** and success metrics
-   - **Realistic constraints** and business considerations
-   - **Interview-style narrative** that tells a complete story
+   - **Unique fictional company name** (be creative - not generic names like "ShopFast")
+   - **Specific industry context** (vary across the full range of company types)
+   - **Company stage** (early-stage startup to enterprise scale)
+   - **Detailed business context** with specific current metrics
+   - **Single, specific intervention** being tested
+   - **Clear business rationale** for why this experiment matters
+   - **Interview-style narrative** that tells a compelling story
 
 2. **CRITICAL: Single Intervention Design**
-   - **Test ONLY ONE specific change** at a time (e.g., only the checkout button color, only the headline text, only the pricing display)
-   - **Avoid multiple simultaneous changes** (e.g., don't test both button color AND text AND layout together)
-   - **Be specific about the single element** being tested (e.g., "changing the CTA button from blue to green" not "redesigning the entire checkout page")
-   - **Good experimental design** requires isolating variables to understand causality
+   - Test ONLY ONE specific change at a time
+   - Be precise about what single element is being tested
+   - Good experimental design requires isolating variables
 
-3. **Provide structured design parameters** that are:
-   - Statistically sound and realistic
-   - Within valid ranges for AB testing
-   - Consistent with the business scenario
-
-4. **Include expected outcomes** that are:
-   - Mathematically consistent with design parameters
-   - Realistic for the business context
-   - Include business interpretation and risk assessment
+3. **Vary the parameters significantly** across scenarios:
+   - Different traffic scales (100 to millions daily)
+   - Different baseline rates appropriate to the metric type
+   - Different effect size expectations (incremental to transformational)
+   - Different statistical requirements based on business context
 
 ## JSON Contract
 
-You MUST return ONLY valid JSON in this exact structure:
+Return ONLY valid JSON in this exact structure:
 
 ```json
 {
   "scenario": {
     "title": "Brief, descriptive title with company name",
-    "narrative": "Detailed, interview-style scenario description (4-6 sentences) including: company background, current situation with specific baseline metrics (e.g., 'currently converting at 3.2%'), specific changes being tested, and business context. End with a business goal that defines the MDE as a raw ratio increase (e.g., 'The business believes that if it can increase the CTR by around 0.03 (3 percentage points), the effort to make the change would be worth the unlock'). CRITICAL: The MDE must always be expressed as a raw ratio increase (0.001 to 0.1), not as absolute time, revenue, or other continuous metrics. Make it feel like a real company asking for help with an experiment.",
-    "company_type": "SaaS",
-    "user_segment": "all_users", 
+    "narrative": "Detailed, interview-style scenario (4-6 sentences) including: company background with stage/scale, current situation with specific baseline metrics, the single specific change being tested and why, business stakes and context. End with business goal expressing MDE as raw ratio (e.g., 'improve signup rate by 0.04 (4 percentage points)').",
+    "company_type": "B2B SaaS",
+    "user_segment": "trial users",
     "primary_kpi": "conversion_rate",
-    "secondary_kpis": ["list", "of", "secondary", "metrics"],
+    "secondary_kpis": ["engagement_rate", "retention_rate"],
     "unit": "user",
-    "assumptions": ["key assumption 1", "key assumption 2", "key assumption 3"]
+    "assumptions": ["key assumption 1", "key assumption 2"]
   },
   "design_params": {
-    "baseline_conversion_rate": 0.18,
-    "mde_absolute": 0.03,
+    "baseline_conversion_rate": 0.12,
+    "mde_absolute": 0.02,
     "target_lift_pct": 0.167,
-    "alpha": 0.01,
-    "power": 0.90,
+    "alpha": 0.05,
+    "power": 0.80,
     "allocation": {"control": 0.5, "treatment": 0.5},
-    "expected_daily_traffic": 15000
+    "expected_daily_traffic": 8500
   },
   "llm_expected": {
     "simulation_hints": {
-      "treatment_conversion_rate": 0.21,
-      "control_conversion_rate": 0.18
+      "treatment_conversion_rate": 0.14,
+      "control_conversion_rate": 0.12
     },
     "narrative_conclusion": "Expected conclusion based on the scenario",
     "business_interpretation": "Business impact interpretation",
@@ -70,184 +73,154 @@ You MUST return ONLY valid JSON in this exact structure:
 
 ## Valid Enum Values
 
-### Company Types (choose one):
-- "SaaS"
-- "E-commerce"
-- "Media"
-- "Media/Content"
-- "Fintech"
-- "Marketplace"
-- "Gaming"
+### Company Types (EXPANDED - use variety):
 
-### User Segments (choose one):
-- "new_users"
-- "new_sign-ups"
-- "returning_users"
-- "premium_users"
-- "trial_users"
-- "all_users"
+**Technology:**
+- "B2B SaaS", "B2C SaaS", "Developer Tools", "Cybersecurity", "AI/ML Platform"
 
-### Primary KPIs (choose one):
-- "conversion_rate" - proportion of users who complete an action (e.g., signup, purchase, download)
-- "click_through_rate" - proportion of users who click on a specific element (e.g., button, link, CTA)
-- "revenue_per_user" - proportion of users who generate revenue (e.g., make a purchase, subscribe)
-- "engagement_rate" - proportion of users who meet engagement criteria (e.g., spend 15+ minutes, view 3+ pages)
+**Consumer:**
+- "DTC E-commerce", "Marketplace", "Subscription Box", "Food Delivery"
+- "Travel & Hospitality", "Gaming", "Streaming Media", "Social Network"
+- "Fitness/Wellness App", "Dating App", "News & Media"
 
-**IMPORTANT**: All KPIs must be measurable as proportions/percentages, not as continuous metrics like time duration, absolute revenue amounts, or session counts.
+**Financial Services:**
+- "Neobank", "Investing Platform", "Insurtech", "Payments", "Lending Platform", "Crypto/Web3"
 
-### Units (choose one):
-- "visitor"
-- "session"
-- "user"
-- "impression"
+**Healthcare:**
+- "Telehealth", "Health Tracking", "Digital Pharmacy", "Mental Health App"
 
-## Parameter Constraints
+**Industrial/B2B:**
+- "Logistics", "HR Tech", "EdTech", "PropTech", "Legal Tech"
 
-### Design Parameters
-- **baseline_conversion_rate**: 0.001 to 0.5 (0.1% to 50%)
-- **mde_absolute**: 0.001 to 0.1 (raw ratio increase, equivalent to 0.1% to 10% percentage points) - MUST be a raw ratio, not absolute time/revenue
-- **target_lift_pct**: -0.5 to 0.5 (-50% to +50%)
-- **alpha**: 0.01 to 0.1 (1% to 10%)
-- **power**: 0.7 to 0.95 (70% to 95%)
-- **allocation**: Must sum to 1.0, both values between 0 and 1
-- **expected_daily_traffic**: 500 to 5,000
+**Legacy (still valid):**
+- "SaaS", "E-commerce", "Media", "Media/Content", "Fintech", "Marketplace", "Gaming"
 
-**CRITICAL MDE CONSTRAINT**: The mde_absolute must always be a raw ratio between 0.001 and 0.1 (e.g., 0.03 = 3 percentage points), never absolute values like "3 minutes", "$50 revenue", or "2 sessions". The narrative must frame the business goal with the raw ratio value.
+### User Segments (EXPANDED - use variety):
 
-**MATHEMATICAL CONSISTENCY REQUIREMENT**: The mde_absolute and target_lift_pct must be mathematically consistent:
+**Lifecycle:**
+- "first-time visitors", "new signups (< 7 days)", "activated users"
+- "weekly active users", "power users (top 10%)", "at-risk users (inactive 14+ days)"
+- "churned users (win-back)", "dormant users (30-90 days inactive)"
+
+**Value Tiers:**
+- "free tier users", "trial users", "paid subscribers"
+- "enterprise accounts", "high-LTV customers", "low-LTV customers"
+
+**Behavioral:**
+- "mobile app users", "desktop users", "high-intent searchers"
+- "cart abandoners", "repeat purchasers", "first-time buyers", "browsers (no purchase history)"
+
+**Geographic:**
+- "US users", "international users", "emerging market users", "EU users"
+
+**Legacy (still valid):**
+- "new_users", "new_sign-ups", "returning_users", "premium_users", "trial_users", "all_users"
+
+### Metric Types (choose appropriate for scenario):
+
+**Conversion Metrics:**
+- "conversion_rate", "signup_rate", "activation_rate", "purchase_rate"
+- "checkout_completion_rate", "form_completion_rate"
+
+**Engagement Metrics:**
+- "click_through_rate", "engagement_rate", "feature_adoption_rate"
+- "content_completion_rate", "video_completion_rate", "share_rate"
+
+**Retention Metrics:**
+- "day_1_retention", "day_7_retention", "day_30_retention"
+- "weekly_retention", "monthly_retention", "churn_rate"
+
+**Quality Metrics:**
+- "error_rate", "bounce_rate", "support_contact_rate", "refund_rate", "nps_promoter_rate"
+
+### Units:
+- "visitor", "session", "user", "impression", "account", "transaction"
+
+## Parameter Constraints (EXPANDED for variety)
+
+### Traffic Tiers - Vary by Company Stage:
+- **Early-stage startups**: 100 - 1,000 daily
+- **Growth-stage**: 1,000 - 10,000 daily
+- **Scale-stage**: 10,000 - 100,000 daily
+- **Enterprise**: 100,000 - 1,000,000+ daily
+
+### Baseline Ranges by Metric Type:
+- **Conversion rate**: 0.1% - 15% (0.001 - 0.15)
+- **Signup rate**: 1% - 40% (0.01 - 0.40)
+- **Activation rate**: 10% - 80% (0.10 - 0.80)
+- **Click-through rate**: 0.5% - 30% (0.005 - 0.30)
+- **Retention rates**: 5% - 70% depending on timeframe
+- **Churn rate**: 1% - 20% (0.01 - 0.20)
+
+### Effect Size Profiles - Vary by Experiment Type:
+- **Incremental optimization**: 2-10% relative lift (mature product, small changes)
+- **Significant change**: 10-30% relative lift (major UX changes, new features)
+- **Transformational**: 30-100% relative lift (radical redesign, new approach)
+- **Defensive**: -10% to +5% relative (proving no harm, cost reduction)
+
+### Statistical Parameters - Vary by Business Context:
+
+**Alpha (Significance Level):**
+- 0.01 (1%): High-stakes, regulatory, safety-critical, financial services
+- 0.05 (5%): Standard product decisions, typical A/B tests
+- 0.10 (10%): Exploratory, low-risk, resource-constrained
+- 0.15-0.20: Very exploratory, quick directional signal
+
+**Power:**
+- 0.60: Quick directional signal, very limited resources
+- 0.70: Exploratory, early-stage validation
+- 0.80: Standard business experiments
+- 0.90: High-stakes, major launches
+- 0.95: Critical decisions, regulatory requirements
+
+**IMPORTANT: Don't always default to α=0.05 and power=0.80!** Justify your choices based on the business context.
+
+### Allocation Options:
+- **Standard**: 50/50 (most common)
+- **Conservative**: 80/20 or 90/10 (risky treatment, protect users)
+- **Aggressive**: 20/80 (strong prior, maximize learning)
+
+### Mathematical Consistency:
 - mde_absolute = baseline_conversion_rate × target_lift_pct
 - target_lift_pct = mde_absolute ÷ baseline_conversion_rate
-- Example: baseline=0.18, mde_absolute=0.03, then target_lift_pct=0.03÷0.18=0.167
+- MDE must be expressed as raw ratio (e.g., 0.03 = 3 percentage points)
 
-### Statistical Parameters (Choose Based on Business Context)
+## Scenario Diversity Guidelines
 
-**Alpha (Significance Level) - Choose based on business risk tolerance:**
-- **0.01 (1%)**: High-stakes decisions, regulatory compliance, safety-critical changes, financial services
-- **0.05 (5%)**: Standard business decisions, most A/B tests, typical product optimization
-- **0.10 (10%)**: Exploratory tests, low-risk experiments, early-stage startups, resource-constrained teams
+### DO create scenarios like:
+- "Duolingo testing streak freeze reminder timing on users with 30+ day streaks"
+- "Series A fintech startup testing biometric login vs PIN on security-conscious users"
+- "Netflix testing 'Skip Recap' button placement on returning binge-watchers"
+- "Early-stage meditation app testing gamification elements on day-7 retention"
+- "Enterprise HR platform testing AI-powered job matching on recruiter efficiency"
+- "Food delivery app testing dynamic ETA display on order completion rate"
 
-**Power (Statistical Power) - Choose based on business importance and resources:**
-- **0.70 (70%)**: Exploratory tests, limited resources, early-stage validation, low-cost experiments
-- **0.80 (80%)**: Standard business experiments, most product optimization tests
-- **0.90 (90%)**: High-stakes decisions, regulatory requirements, major feature launches
-- **0.95 (95%)**: Critical business decisions, safety testing, compliance requirements
+### DON'T create repetitive scenarios like:
+- Generic "e-commerce company improving checkout"
+- Vague "SaaS company testing onboarding"
+- Template-driven scenarios with predictable parameters
+- Same company types and metrics repeatedly
 
-**Choose alpha and power based on:**
-- **Business risk tolerance**: Higher stakes = lower alpha, higher power
-- **Cost of false positives vs false negatives**: Balance Type I and Type II errors
-- **Resource constraints**: Higher power requires larger sample sizes
-- **Regulatory requirements**: Some industries require specific thresholds
-- **Decision importance**: Critical decisions need higher power and lower alpha
-- **Company stage**: Startups may use higher alpha/lower power for speed
-
-**Vary these parameters realistically** - don't always use 0.05 for alpha and 0.8 for power. Consider the business context when choosing values.
-
-**IMPORTANT**: Generate realistic, varied daily traffic numbers between 500 and 5,000 daily visitors:
-- **Small startups**: 500 - 1,500 daily visitors
-- **Growing companies**: 1,500 - 3,000 daily visitors  
-- **Established companies**: 3,000 - 5,000 daily visitors
-
-Use realistic numbers like 750, 1,200, 2,800, 4,200, etc. Avoid round numbers like 1,000, 2,000, 3,000, 5,000 unless they make business sense.
-
-### Simulation Hints
-- **treatment_conversion_rate**: Must be consistent with target_lift_pct
-- **control_conversion_rate**: Should match baseline_conversion_rate
-- Both rates must be between 0.001 and 0.5
-
-## Scenario Types
-
-Generate scenarios for these business contexts:
-
-### E-commerce
-- Checkout flow optimization
-- Product page improvements
-- Cart abandonment reduction
-- Payment method testing
-- Shipping options testing
-
-### SaaS
-- Onboarding flow optimization
-- Feature adoption testing
-- Pricing page optimization
-- Trial-to-paid conversion
-- User engagement features
-
-### Media/Content
-- Article engagement testing
-- Video player optimization
-- Subscription conversion
-- Content recommendation
-- Ad placement testing
-
-### Fintech
-- Account opening flow
-- Payment processing
-- Security feature adoption
-- Investment tool usage
-- Loan application flow
-
-### Marketplace
-- Listing optimization
-- Search result ranking
-- Seller onboarding
-- Buyer conversion
-- Transaction completion
-
-### Gaming
-- Level progression
-- In-app purchase conversion
-- Social feature adoption
-- Retention mechanics
-- Monetization optimization
+### Vary These Elements:
+1. **Company stage**: Seed → Series A → Growth → Enterprise
+2. **Traffic scale**: 100s → thousands → millions
+3. **Metric type**: Conversion, engagement, retention, quality
+4. **Effect size**: Incremental → transformational
+5. **Risk profile**: Exploratory → high-stakes
+6. **User segment**: New → power users → churned
+7. **Industry**: Rotate through all company types
 
 ## Quality Guidelines
 
-1. **Realism**: Use realistic conversion rates and business metrics
-2. **Consistency**: Ensure all parameters are mathematically consistent
-3. **Clarity**: Write clear, actionable scenarios
-4. **Completeness**: Include all required fields and realistic secondary KPIs
-5. **Variety**: Generate diverse scenarios across different business types
-
-## Examples
-
-### Good Scenario Example (Single Intervention)
-**Title**: "ShopFast Checkout Button Color Test"
-
-**CORRECT MDE Examples** (raw ratio increases):
-- "increase conversion rate by 0.02 (2 percentage points)" (mde_absolute: 0.02)
-- "boost click-through rate by 0.035 (3.5 percentage points)" (mde_absolute: 0.035)
-- "improve engagement rate by 0.018 (1.8 percentage points)" (mde_absolute: 0.018)
-
-**INCORRECT MDE Examples** (continuous metrics - DO NOT USE):
-- "increase session duration by 3 minutes" ❌
-- "boost revenue by $50 per user" ❌
-- "improve page views by 2 sessions" ❌
-**Narrative**: "ShopFast is a fast-growing e-commerce platform specializing in electronics and home goods, currently processing 50,000 orders per month with a checkout conversion rate of 12.5%. The product team has identified that 68% of users abandon their carts during the checkout process, with the majority dropping off at the final 'Complete Purchase' step. After user research, they've discovered that the current blue checkout button may not be prominent enough to drive action. They want to test changing ONLY the checkout button color from blue to green, keeping everything else identical (same text, same size, same position, same page layout). The hypothesis is that a green button will create a stronger call-to-action and increase checkout completion rates. The business believes that if it can increase the checkout conversion rate by around 2 percentage points, the effort to make the change would be worth the unlock."
-
-### Bad Scenario Example (Multiple Interventions)
-**Title**: "E-commerce Checkout Optimization"
-**Narrative**: "An e-commerce company wants to improve user experience and increase conversions by redesigning the entire checkout page with new colors, different form fields, updated copy, and a new layout."
-
-### Bad Scenario Example (Too Vague)
-**Title**: "E-commerce Optimization"
-**Narrative**: "An e-commerce company wants to improve user experience and increase conversions."
-
-### Scenario Quality Guidelines
-- **Include fictional company name** (ShopFast, DataFlow, StreamVibe, PaySecure, etc.)
-- **Provide company background** (what they do, their size, current situation)
-- **Include current baseline metrics** (e.g., "currently converting at 3.2%", "engagement rate of 15%")
-- **Describe ONE specific change** (exactly what single element is being tested and why)
-- **Emphasize single intervention** (test only button color, only headline text, only pricing display)
-- **Include business context** (current metrics, pain points, goals)
-- **End with MDE in absolute terms** (e.g., "increase CTR by 3 percentage points", "boost conversion by 2pp")
-- **Make it interview-realistic** (feels like a real company asking for help)
-- **Use realistic baselines** (2.5% conversion rate, not 50%)
-- **Reasonable MDE targets** (2-5 percentage points absolute increase)
-- **Appropriate traffic** (500-5,000 daily visitors for this simulator)
-- **Consistent parameters** (all numbers make sense together)
+1. **Uniqueness**: Each scenario should feel distinct and fresh
+2. **Realism**: Use metrics appropriate for the industry and company stage
+3. **Specificity**: Name the exact element being tested
+4. **Consistency**: All parameters must be mathematically consistent
+5. **Educational value**: Create scenarios that teach different aspects of experimentation
+6. **Narrative quality**: Tell a compelling story with business stakes
 
 ## Output Format
 
-Return ONLY the JSON object. Do not include any explanatory text, markdown formatting, or additional commentary. The response must be valid JSON that can be parsed directly.
+Return ONLY the JSON object. No explanatory text, no markdown formatting, no additional commentary. The response must be valid JSON that can be parsed directly.
 
-Generate a realistic AB test scenario now:
+Generate a creative, unique AB test scenario now:

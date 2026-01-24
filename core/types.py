@@ -39,23 +39,30 @@ class DesignParams:
     power: float
     allocation: Allocation
     expected_daily_traffic: int
-    
+
     def __post_init__(self):
-        """Validate design parameters."""
-        if not (0.001 <= self.baseline_conversion_rate <= 1.0):
-            raise ValueError(f"Baseline conversion rate must be between 0.001 and 1.0, got {self.baseline_conversion_rate}")
-        
-        if not (-1.0 <= self.target_lift_pct <= 1.0):
-            raise ValueError(f"Target lift must be between -1.0 and 1.0, got {self.target_lift_pct}")
-        
-        if not (0.01 <= self.alpha <= 0.1):
-            raise ValueError(f"Alpha must be between 0.01 and 0.1, got {self.alpha}")
-        
-        if not (0.7 <= self.power <= 0.95):
-            raise ValueError(f"Power must be between 0.7 and 0.95, got {self.power}")
-        
-        if self.expected_daily_traffic < 1000:
-            raise ValueError(f"Expected daily traffic must be at least 1000, got {self.expected_daily_traffic}")
+        """Validate design parameters with expanded bounds for variety."""
+        # Baseline: Allow 0.01% to 95% (expanded from 0.1% to 100%)
+        if not (0.0001 <= self.baseline_conversion_rate <= 0.95):
+            raise ValueError(f"Baseline conversion rate must be between 0.0001 and 0.95, got {self.baseline_conversion_rate}")
+
+        # Target lift: Allow -90% to +500% (expanded for transformational experiments)
+        if not (-0.9 <= self.target_lift_pct <= 5.0):
+            raise ValueError(f"Target lift must be between -0.9 and 5.0, got {self.target_lift_pct}")
+
+        # Alpha: Allow 0.1% to 20% (expanded for exploratory and conservative tests)
+        if not (0.001 <= self.alpha <= 0.2):
+            raise ValueError(f"Alpha must be between 0.001 and 0.2, got {self.alpha}")
+
+        # Power: Allow 50% to 99% (expanded for quick signals and critical decisions)
+        if not (0.5 <= self.power <= 0.99):
+            raise ValueError(f"Power must be between 0.5 and 0.99, got {self.power}")
+
+        # Traffic: Allow 50 to 100M (expanded for early-stage to massive scale)
+        if self.expected_daily_traffic < 50:
+            raise ValueError(f"Expected daily traffic must be at least 50, got {self.expected_daily_traffic}")
+        if self.expected_daily_traffic > 100_000_000:
+            raise ValueError(f"Expected daily traffic must be at most 100,000,000, got {self.expected_daily_traffic}")
 
 
 @dataclass(frozen=True)

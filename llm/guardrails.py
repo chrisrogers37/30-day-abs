@@ -81,7 +81,9 @@ from dataclasses import dataclass
 
 from schemas.scenario import ScenarioResponseDTO
 from schemas.design import DesignParamsDTO
-from schemas.shared import CompanyType, UserSegment
+from schemas.shared import (
+    CompanyType, UserSegment, MetricType, EffectSizeProfile, TrafficTier
+)
 
 from core.logging import get_logger
 
@@ -208,41 +210,106 @@ class LLMGuardrails:
     def __init__(self):
         """
         Initialize the guardrails with parameter bounds and business rules.
-        
+
         Sets up the validation system with:
-        - Statistical parameter bounds for AB testing
-        - Business context validation rules
-        - Company type and user segment mappings
+        - Statistical parameter bounds for AB testing (expanded for variety)
+        - Metric-specific baseline ranges
+        - Traffic tier definitions
+        - Effect size profiles
         """
-        # Parameter bounds for statistical validation
+        # Parameter bounds for statistical validation - EXPANDED for variety
         self.bounds = {
-            'baseline_conversion_rate': (0.001, 0.5),  # 0.1% to 50%
-            'mde_absolute': (0.001, 0.1),  # 0.1% to 10% percentage points
-            'target_lift_pct': (-0.5, 0.5),  # -50% to +50%
-            'alpha': (0.01, 0.1),  # 1% to 10%
-            'power': (0.7, 0.95),  # 70% to 95%
-            'expected_daily_traffic': (500, 5000),  # 500 to 5,000 daily visitors
-            'treatment_conversion_rate': (0.001, 0.5),  # 0.1% to 50%
-            'control_conversion_rate': (0.001, 0.5)  # 0.1% to 50%
+            'baseline_conversion_rate': (0.001, 0.8),  # 0.1% to 80% (expanded)
+            'mde_absolute': (0.001, 0.2),  # 0.1% to 20% percentage points (expanded)
+            'target_lift_pct': (-0.5, 1.0),  # -50% to +100% (expanded for transformational)
+            'alpha': (0.001, 0.2),  # 0.1% to 20% (expanded)
+            'power': (0.5, 0.99),  # 50% to 99% (expanded)
+            'expected_daily_traffic': (100, 10_000_000),  # 100 to 10M daily (massively expanded)
+            'treatment_conversion_rate': (0.001, 0.8),  # 0.1% to 80%
+            'control_conversion_rate': (0.001, 0.8)  # 0.1% to 80%
         }
-        
-        # Business context validation rules
-        self.business_rules = {
-            'company_type_scenarios': {
-                CompanyType.ECOMMERCE: ['checkout', 'cart', 'payment', 'shipping', 'product'],
-                CompanyType.SAAS: ['onboarding', 'feature', 'pricing', 'trial', 'engagement'],
-                CompanyType.MEDIA: ['article', 'video', 'subscription', 'content', 'ad'],
-                CompanyType.FINTECH: ['account', 'payment', 'security', 'investment', 'loan'],
-                CompanyType.MARKETPLACE: ['listing', 'search', 'seller', 'buyer', 'transaction'],
-                CompanyType.GAMING: ['level', 'purchase', 'social', 'retention', 'monetization']
+
+        # Traffic tier definitions for different company stages
+        self.traffic_tiers = {
+            TrafficTier.EARLY_STAGE: (100, 1_000),
+            TrafficTier.GROWTH: (1_000, 10_000),
+            TrafficTier.SCALE: (10_000, 100_000),
+            TrafficTier.ENTERPRISE: (100_000, 10_000_000)
+        }
+
+        # Metric-specific baseline ranges for realistic scenarios
+        self.metric_baseline_ranges = {
+            # Conversion metrics - typically low
+            MetricType.CONVERSION_RATE: (0.001, 0.15),
+            MetricType.SIGNUP_RATE: (0.01, 0.40),
+            MetricType.ACTIVATION_RATE: (0.10, 0.80),
+            MetricType.PURCHASE_RATE: (0.005, 0.20),
+            MetricType.CHECKOUT_COMPLETION: (0.30, 0.85),
+            MetricType.FORM_COMPLETION: (0.10, 0.70),
+
+            # Engagement metrics - varies widely
+            MetricType.CLICK_THROUGH_RATE: (0.005, 0.30),
+            MetricType.ENGAGEMENT_RATE: (0.05, 0.60),
+            MetricType.FEATURE_ADOPTION: (0.01, 0.50),
+            MetricType.CONTENT_COMPLETION: (0.20, 0.80),
+            MetricType.VIDEO_COMPLETION: (0.15, 0.70),
+            MetricType.SHARE_RATE: (0.001, 0.10),
+
+            # Retention metrics - typically moderate to high
+            MetricType.DAY_1_RETENTION: (0.20, 0.70),
+            MetricType.DAY_7_RETENTION: (0.10, 0.50),
+            MetricType.DAY_30_RETENTION: (0.05, 0.35),
+            MetricType.WEEKLY_RETENTION: (0.30, 0.80),
+            MetricType.MONTHLY_RETENTION: (0.20, 0.70),
+            MetricType.CHURN_RATE: (0.01, 0.20),
+
+            # Quality metrics - typically low (errors) or moderate (bounce)
+            MetricType.ERROR_RATE: (0.001, 0.10),
+            MetricType.BOUNCE_RATE: (0.20, 0.70),
+            MetricType.SUPPORT_CONTACT_RATE: (0.01, 0.15),
+            MetricType.REFUND_RATE: (0.01, 0.10),
+            MetricType.NPS_PROMOTER_RATE: (0.20, 0.70),
+        }
+
+        # Effect size profiles for different experiment types
+        self.effect_size_profiles = {
+            EffectSizeProfile.INCREMENTAL: {
+                'relative_lift_range': (0.02, 0.10),  # 2-10% relative
+                'description': 'Mature product optimization - small iterative improvements'
             },
-            'user_segment_contexts': {
-                UserSegment.NEW_USERS: ['onboarding', 'first-time', 'trial', 'signup'],
-                UserSegment.RETURNING_USERS: ['engagement', 'retention', 'feature', 'upgrade'],
-                UserSegment.PREMIUM_USERS: ['advanced', 'premium', 'enterprise', 'pro'],
-                UserSegment.ALL_USERS: ['general', 'overall', 'site-wide', 'universal']
+            EffectSizeProfile.SIGNIFICANT: {
+                'relative_lift_range': (0.10, 0.30),  # 10-30% relative
+                'description': 'Major UX overhaul, new feature launch, significant changes'
+            },
+            EffectSizeProfile.TRANSFORMATIONAL: {
+                'relative_lift_range': (0.30, 1.00),  # 30-100% relative
+                'description': 'Completely new approach, radical redesign, high-risk test'
+            },
+            EffectSizeProfile.DEFENSIVE: {
+                'relative_lift_range': (-0.10, 0.05),  # -10% to +5%
+                'description': 'Proving no harm - cost reduction, infrastructure change'
             }
         }
+
+        # Alpha/power guidance based on business context
+        self.alpha_guidance = {
+            'high_stakes': 0.01,  # Irreversible changes, brand risk, regulatory
+            'standard': 0.05,  # Standard product decisions
+            'exploratory': 0.10,  # Easy rollback, low stakes
+            'very_exploratory': 0.15,  # Quick directional signal
+        }
+
+        self.power_guidance = {
+            'quick_signal': 0.60,  # Very limited resources, directional only
+            'exploratory': 0.70,  # Quick directional signal
+            'standard': 0.80,  # Balance of speed and confidence
+            'important': 0.90,  # High-value opportunity
+            'critical': 0.95,  # Must not miss true effect
+        }
+
+        # Note: Removed restrictive keyword validation rules
+        # The LLM is now free to generate creative, varied narratives
+        # without being constrained to specific keyword patterns
     
     def validate_scenario(self, scenario_response_dto: ScenarioResponseDTO) -> ValidationResult:
         """
@@ -346,44 +413,38 @@ class LLMGuardrails:
             )
     
     def _validate_business_context(self, scenario_response_dto: ScenarioResponseDTO, result: ValidationResult):
-        """Validate business context consistency."""
+        """
+        Validate business context consistency.
+
+        Note: Keyword validation has been removed to allow more creative,
+        varied scenario narratives. The LLM is now free to generate diverse
+        scenarios without being constrained to specific keyword patterns.
+        """
         scenario = scenario_response_dto.scenario
-        company_type = scenario.company_type
-        user_segment = scenario.user_segment
-        title = scenario.title.lower()
-        narrative = scenario.narrative.lower()
-        
-        # Check company type consistency
-        expected_keywords = self.business_rules['company_type_scenarios'].get(company_type, [])
-        if expected_keywords:
-            found_keywords = [kw for kw in expected_keywords if kw in title or kw in narrative]
-            if not found_keywords:
-                result.warnings.append(
-                    f"Scenario doesn't seem to match company type {company_type.value}. "
-                    f"Expected keywords: {expected_keywords}"
-                )
-        
-        # Check user segment consistency
-        segment_keywords = self.business_rules['user_segment_contexts'].get(user_segment, [])
-        if segment_keywords:
-            found_segment_keywords = [kw for kw in segment_keywords if kw in title or kw in narrative]
-            if not found_segment_keywords:
-                result.warnings.append(
-                    f"Scenario doesn't seem to match user segment {user_segment.value}. "
-                    f"Expected keywords: {segment_keywords}"
-                )
-        
-        # Check KPI consistency
+
+        # Basic validation - ensure required fields are present and non-empty
+        if not scenario.title or len(scenario.title.strip()) < 10:
+            result.warnings.append("Scenario title seems too short - consider more descriptive title")
+
+        if not scenario.narrative or len(scenario.narrative.strip()) < 50:
+            result.warnings.append("Scenario narrative seems too short - consider more detailed context")
+
+        # Check that company_type and user_segment are valid enum values
+        # (Pydantic should handle this, but double-check)
+        try:
+            _ = scenario.company_type.value
+        except (AttributeError, ValueError):
+            result.errors.append(f"Invalid company type: {scenario.company_type}")
+
+        try:
+            _ = scenario.user_segment.value
+        except (AttributeError, ValueError):
+            result.errors.append(f"Invalid user segment: {scenario.user_segment}")
+
+        # Light validation for primary KPI format
         primary_kpi = scenario.primary_kpi.lower()
-        if 'conversion' in primary_kpi and 'rate' not in primary_kpi:
-            result.warnings.append("Primary KPI should specify 'conversion_rate' for clarity")
-        
-        # Check unit consistency
-        unit = scenario.unit.lower()
-        if 'conversion' in primary_kpi and unit not in ['visitor', 'user', 'session']:
-            result.warnings.append(
-                f"Unit '{unit}' may not be appropriate for conversion rate measurement"
-            )
+        if not primary_kpi or len(primary_kpi) < 3:
+            result.warnings.append("Primary KPI should be clearly specified")
     
     def _validate_parameter_consistency(self, scenario_response_dto: ScenarioResponseDTO, result: ValidationResult):
         """Validate parameter consistency."""
@@ -457,44 +518,56 @@ class LLMGuardrails:
             )
     
     def _validate_realism(self, scenario_response_dto: ScenarioResponseDTO, result: ValidationResult):
-        """Validate realism of the scenario."""
+        """
+        Validate realism of the scenario with expanded, flexible bounds.
+
+        This validation is now much more permissive to allow diverse scenarios
+        across different company stages, industries, and experiment types.
+        """
         design_params = scenario_response_dto.design_params
-        scenario = scenario_response_dto.scenario
-        
-        # Check for unrealistic conversion rates
+
+        # Check conversion rates against expanded bounds only
         baseline = design_params.baseline_conversion_rate
-        if baseline > 0.2:  # 20%
+        if baseline > 0.8:  # 80% - truly extreme
             result.warnings.append(
-                f"Baseline conversion rate {baseline:.1%} seems high for most scenarios"
+                f"Baseline conversion rate {baseline:.1%} is very high - ensure this is realistic for the metric type"
             )
-        elif baseline < 0.005:  # 0.5%
+        elif baseline < 0.001:  # 0.1% - truly extreme
             result.warnings.append(
-                f"Baseline conversion rate {baseline:.1%} seems low for most scenarios"
+                f"Baseline conversion rate {baseline:.1%} is very low - ensure this is realistic for the metric type"
             )
-        
-        # Check for unrealistic target lifts
+
+        # Check target lift - only warn for truly extreme values
         target_lift = design_params.target_lift_pct
-        if abs(target_lift) > 1.0:  # 100%
+        if target_lift > 2.0:  # 200% relative lift
             result.warnings.append(
-                f"Target lift {target_lift:.1%} seems ambitious for most scenarios"
+                f"Target lift {target_lift:.1%} is very ambitious - consider if this is achievable"
             )
-        
-        # Check for unrealistic traffic
+        elif target_lift < -0.5:  # -50% relative lift
+            result.warnings.append(
+                f"Target lift {target_lift:.1%} suggests significant negative impact expected"
+            )
+
+        # Traffic validation is now informational, not restrictive
         traffic = design_params.expected_daily_traffic
-        if traffic > 1000000:  # 1M daily
+        if traffic > 10_000_000:  # 10M daily - truly massive
             result.warnings.append(
-                f"Daily traffic {traffic:,} seems very high for most scenarios"
+                f"Daily traffic {traffic:,} is enterprise-scale - ensure experiment can handle this volume"
             )
-        elif traffic < 5000:  # 5K daily
+        elif traffic < 100:  # Very small
             result.warnings.append(
-                f"Daily traffic {traffic:,} may be too low for meaningful AB testing"
+                f"Daily traffic {traffic:,} is very low - experiment duration may be very long"
             )
-        
-        # Check for unrealistic power
+
+        # Power validation - informational only
         power = design_params.power
-        if power > 0.9:  # 90%
-            result.warnings.append(
-                f"Power {power:.1%} is very high and may require large sample sizes"
+        if power > 0.95:
+            result.suggestions.append(
+                f"Power {power:.1%} is very high - consider if this precision is needed vs. faster iteration"
+            )
+        elif power < 0.6:
+            result.suggestions.append(
+                f"Power {power:.1%} is low - results may be directional only, higher risk of false negatives"
             )
     
     def clamp_parameters(self, scenario_response_dto: ScenarioResponseDTO) -> Tuple[ScenarioResponseDTO, Dict[str, Tuple[float, float]]]:
@@ -605,32 +678,49 @@ class LLMGuardrails:
     def get_quality_score(self, scenario_response_dto: ScenarioResponseDTO) -> float:
         """
         Calculate a quality score for the scenario (0-1).
-        
+
+        Quality is now assessed based on internal consistency and completeness,
+        not on narrow parameter ranges. Diverse scenarios are encouraged.
+
         Args:
             scenario_response_dto: Scenario to score
-            
+
         Returns:
             Quality score between 0 and 1
         """
         score = 1.0
-        
-        # Calculate quality without calling validate_scenario to avoid recursion
+
         design_params = scenario_response_dto.design_params
-        
-        # Deduct for unrealistic values
-        if design_params.baseline_conversion_rate > 0.2 or design_params.baseline_conversion_rate < 0.005:
-            score -= 0.1
-        
-        if abs(design_params.target_lift_pct) > 1.0:
-            score -= 0.1
-        
-        if design_params.expected_daily_traffic > 1000000 or design_params.expected_daily_traffic < 5000:
-            score -= 0.1
-        
-        # Deduct for inconsistency
+        scenario = scenario_response_dto.scenario
+
+        # Deduct for truly extreme/impossible values only
+        if design_params.baseline_conversion_rate > 0.95:  # Can't have >95% baseline
+            score -= 0.2
+        if design_params.baseline_conversion_rate < 0.0001:  # Too small to measure
+            score -= 0.2
+
+        # Deduct for impossible lifts
+        if design_params.target_lift_pct > 5.0:  # 500% lift is unrealistic
+            score -= 0.2
+        if design_params.target_lift_pct < -0.9:  # -90% would eliminate the metric
+            score -= 0.2
+
+        # Deduct for internal inconsistency between baseline and simulation hints
         baseline = design_params.baseline_conversion_rate
         control_rate = scenario_response_dto.llm_expected.simulation_hints.control_conversion_rate
-        if abs(baseline - control_rate) > 0.001:
+        if abs(baseline - control_rate) > 0.01:  # Allow 1% tolerance
             score -= 0.1
-        
+
+        # Bonus for rich narrative content
+        if len(scenario.narrative) > 200:
+            score += 0.05
+        if len(scenario.title) > 30:
+            score += 0.05
+
+        # Deduct for missing or minimal content
+        if len(scenario.narrative) < 50:
+            score -= 0.15
+        if len(scenario.title) < 10:
+            score -= 0.1
+
         return max(0.0, min(1.0, score))

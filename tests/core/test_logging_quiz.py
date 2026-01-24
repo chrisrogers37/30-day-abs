@@ -99,22 +99,24 @@ class TestQuizLogger:
         scenario_data = {
             'scenario': {
                 'title': 'E-commerce Checkout Test',
-                'company': 'ShopFast',
-                'industry': 'E-commerce',
+                'company_type': 'E-commerce',
+                'user_segment': 'all_users',
+                'primary_kpi': 'conversion_rate',
                 'baseline_conversion_rate': 0.025,
                 'target_lift_pct': 0.20,
                 'expected_daily_traffic': 10000,
                 'business_context': 'Improve checkout conversion'
             }
         }
-        
+
         logger.log_scenario_generated(scenario_data)
-        
+
         content = log_file.read_text()
         assert "SCENARIO GENERATED" in content
         assert "Title: E-commerce Checkout Test" in content
-        assert "Company: ShopFast" in content
-        assert "Industry: E-commerce" in content
+        assert "Company Type: E-commerce" in content
+        assert "User Segment: all_users" in content
+        assert "Primary KPI: conversion_rate" in content
         assert "Baseline Conversion: 2.5%" in content
         assert "Target Lift: 20.0%" in content
         assert "Daily Traffic: 10,000" in content
