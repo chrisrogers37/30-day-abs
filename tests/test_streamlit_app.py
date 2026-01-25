@@ -11,61 +11,46 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_streamlit_imports():
     """Test that all required imports work."""
-    print("🧪 Testing Streamlit app imports...")
-    
-    try:
-        import streamlit as st
-        print("✅ Streamlit imported successfully")
-    except Exception as e:
-        print(f"❌ Streamlit import failed: {e}")
-        return False
-    
-    try:
-        import pandas as pd
-        print("✅ Pandas imported successfully")
-    except Exception as e:
-        print(f"❌ Pandas import failed: {e}")
-        return False
-    
-    try:
-        # Test our app imports
-        from llm.client import create_llm_client
-        from llm.parser import LLMOutputParser
-        from llm.guardrails import LLMGuardrails
-        from core.simulate import simulate_trial
-        from core.analyze import analyze_results
-        print("✅ All app modules imported successfully")
-    except Exception as e:
-        print(f"❌ App module import failed: {e}")
-        return False
-    
-    return True
+    # Test streamlit import
+    import streamlit as st
+    assert st is not None, "Streamlit import failed"
+
+    # Test pandas import
+    import pandas as pd
+    assert pd is not None, "Pandas import failed"
+
+    # Test our app imports
+    from llm.client import create_llm_client
+    from llm.parser import LLMOutputParser
+    from llm.guardrails import LLMGuardrails
+    from core.simulate import simulate_trial
+    from core.analyze import analyze_results
+
+    assert create_llm_client is not None
+    assert LLMOutputParser is not None
+    assert LLMGuardrails is not None
+    assert simulate_trial is not None
+    assert analyze_results is not None
 
 def test_basic_functionality():
     """Test basic functionality without running the full app."""
-    print("\n🧪 Testing basic functionality...")
-    
-    try:
-        # Test LLM client creation
-        from llm.client import create_llm_client
-        client = create_llm_client(provider="mock")
-        print("✅ Mock LLM client created successfully")
-        
-        # Test parser creation
-        from llm.parser import LLMOutputParser
-        parser = LLMOutputParser()
-        print("✅ LLM parser created successfully")
-        
-        # Test guardrails creation
-        from llm.guardrails import LLMGuardrails
-        guardrails = LLMGuardrails()
-        print("✅ LLM guardrails created successfully")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Basic functionality test failed: {e}")
-        return False
+    # Test LLM client creation
+    from llm.client import create_llm_client
+
+    client = create_llm_client(provider="mock")
+    assert client is not None, "Mock LLM client creation failed"
+
+    # Test parser creation
+    from llm.parser import LLMOutputParser
+
+    parser = LLMOutputParser()
+    assert parser is not None, "LLM parser creation failed"
+
+    # Test guardrails creation
+    from llm.guardrails import LLMGuardrails
+
+    guardrails = LLMGuardrails()
+    assert guardrails is not None, "LLM guardrails creation failed"
 
 def main():
     """Run all tests."""
