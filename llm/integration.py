@@ -282,20 +282,17 @@ class LLMIntegration:
             
             # Step 4: Simulate data
             logger.info("Step 4: Simulating trial data...")
-            simulation_result = simulate_trial(design_params, sample_size_result)
+            simulation_result = simulate_trial(design_params, seed=42)
             result.simulation_result = simulation_result
             logger.info(f"✅ Simulation completed: {simulation_result.control_conversions}/{simulation_result.control_n} vs {simulation_result.treatment_conversions}/{simulation_result.treatment_n}")
             
             # Step 5: Analyze results
             logger.info("Step 5: Analyzing results...")
             analysis_result = analyze_results(
-                control_n=simulation_result.control_n,
-                control_conversions=simulation_result.control_conversions,
-                treatment_n=simulation_result.treatment_n,
-                treatment_conversions=simulation_result.treatment_conversions,
-                test_type="two_proportion_z",
-                test_direction="two_tailed",
-                alpha=design_params.alpha
+                sim_result=simulation_result,
+                alpha=design_params.alpha,
+                test_type="auto",
+                test_direction="two_tailed"
             )
             result.analysis_result = analysis_result
             logger.info(f"✅ Analysis completed: p-value = {analysis_result.p_value:.4f}")
