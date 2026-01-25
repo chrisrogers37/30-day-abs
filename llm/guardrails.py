@@ -724,3 +724,321 @@ class LLMGuardrails:
             score -= 0.1
 
         return max(0.0, min(1.0, score))
+
+
+# =============================================================================
+# NOVELTY SCORING SYSTEM
+# =============================================================================
+
+class NoveltyScorer:
+    """
+    Scores how different a new scenario is from recently generated ones.
+
+    This helps prevent repetitive scenarios by tracking what types of scenarios
+    have been generated recently and penalizing similar combinations.
+
+    Features:
+        - Tracks recent scenarios by company type, segment, traffic tier, etc.
+        - Calculates novelty score (0-1) for new scenarios
+        - Provides suggestions for increasing diversity
+
+    Usage:
+        scorer = NoveltyScorer(history_size=20)
+        novelty = scorer.score_novelty(new_scenario)
+        if novelty < 0.5:
+            print("Consider a different company type or segment")
+        scorer.record_scenario(new_scenario)  # Add to history after generation
+    """
+
+    def __init__(self, history_size: int = 20):
+        """
+        Initialize the novelty scorer.
+
+        Args:
+            history_size: Number of recent scenarios to track for comparison
+        """
+        self.history_size = history_size
+        self.recent_scenarios: List[Dict] = []
+
+    def _extract_features(self, scenario_dto: ScenarioResponseDTO) -> Dict:
+        """Extract features from a scenario for comparison."""
+        scenario = scenario_dto.scenario
+        design_params = scenario_dto.design_params
+
+        # Determine traffic tier
+        traffic = design_params.expected_daily_traffic
+        if traffic < 1000:
+            traffic_tier = "early_stage"
+        elif traffic < 10000:
+            traffic_tier = "growth"
+        elif traffic < 100000:
+            traffic_tier = "scale"
+        else:
+            traffic_tier = "enterprise"
+
+        # Determine baseline tier
+        baseline = design_params.baseline_conversion_rate
+        if baseline < 0.01:
+            baseline_tier = "very_low"
+        elif baseline < 0.05:
+            baseline_tier = "low"
+        elif baseline < 0.15:
+            baseline_tier = "medium"
+        elif baseline < 0.30:
+            baseline_tier = "high"
+        else:
+            baseline_tier = "very_high"
+
+        # Determine effect size tier
+        lift = design_params.target_lift_pct
+        if lift < 0.05:
+            effect_tier = "incremental"
+        elif lift < 0.20:
+            effect_tier = "moderate"
+        elif lift < 0.50:
+            effect_tier = "significant"
+        else:
+            effect_tier = "transformational"
+
+        return {
+            "company_type": scenario.company_type.value if hasattr(scenario.company_type, 'value') else str(scenario.company_type),
+            "user_segment": scenario.user_segment.value if hasattr(scenario.user_segment, 'value') else str(scenario.user_segment),
+            "primary_kpi": scenario.primary_kpi,
+            "traffic_tier": traffic_tier,
+            "baseline_tier": baseline_tier,
+            "effect_tier": effect_tier,
+            "alpha": design_params.alpha,
+            "power": design_params.power,
+        }
+
+    def score_novelty(self, scenario_dto: ScenarioResponseDTO) -> float:
+        """
+        Calculate a novelty score for a scenario compared to recent history.
+
+        Args:
+            scenario_dto: The scenario to score
+
+        Returns:
+            Novelty score from 0 (highly repetitive) to 1 (highly novel)
+        """
+        if not self.recent_scenarios:
+            return 1.0  # First scenario is always novel
+
+        new_features = self._extract_features(scenario_dto)
+
+        # Calculate similarity to each recent scenario
+        total_similarity = 0.0
+
+        for recent in self.recent_scenarios:
+            similarity = 0.0
+
+            # Same company type: high penalty
+            if new_features["company_type"] == recent["company_type"]:
+                similarity += 0.25
+
+            # Same user segment: moderate penalty
+            if new_features["user_segment"] == recent["user_segment"]:
+                similarity += 0.15
+
+            # Same KPI: moderate penalty
+            if new_features["primary_kpi"] == recent["primary_kpi"]:
+                similarity += 0.10
+
+            # Same traffic tier: low penalty
+            if new_features["traffic_tier"] == recent["traffic_tier"]:
+                similarity += 0.10
+
+            # Same baseline tier: low penalty
+            if new_features["baseline_tier"] == recent["baseline_tier"]:
+                similarity += 0.10
+
+            # Same effect tier: low penalty
+            if new_features["effect_tier"] == recent["effect_tier"]:
+                similarity += 0.10
+
+            # Similar alpha (same band)
+            if new_features["alpha"] == recent["alpha"]:
+                similarity += 0.10
+
+            # Similar power (same band)
+            if new_features["power"] == recent["power"]:
+                similarity += 0.10
+
+            total_similarity += similarity
+
+        # Average similarity across recent scenarios
+        avg_similarity = total_similarity / len(self.recent_scenarios)
+
+        # Weight more recent scenarios higher
+        recency_weighted_similarity = 0.0
+        for i, recent in enumerate(self.recent_scenarios):
+            recency_weight = (i + 1) / len(self.recent_scenarios)  # More recent = higher weight
+
+            similarity = 0.0
+            if new_features["company_type"] == recent["company_type"]:
+                similarity += 0.25
+            if new_features["user_segment"] == recent["user_segment"]:
+                similarity += 0.15
+            if new_features["primary_kpi"] == recent["primary_kpi"]:
+                similarity += 0.10
+
+            recency_weighted_similarity += similarity * recency_weight
+
+        # Combine average and recency-weighted similarity
+        combined_similarity = (avg_similarity + recency_weighted_similarity) / 2
+
+        # Convert to novelty score
+        novelty = max(0.0, 1.0 - combined_similarity)
+
+        return novelty
+
+    def record_scenario(self, scenario_dto: ScenarioResponseDTO) -> None:
+        """
+        Record a scenario in the history for future novelty comparisons.
+
+        Args:
+            scenario_dto: The scenario to record
+        """
+        features = self._extract_features(scenario_dto)
+        self.recent_scenarios.append(features)
+
+        # Maintain history size
+        if len(self.recent_scenarios) > self.history_size:
+            self.recent_scenarios = self.recent_scenarios[-self.history_size:]
+
+    def get_diversity_suggestions(self, scenario_dto: ScenarioResponseDTO) -> List[str]:
+        """
+        Get suggestions for making a scenario more novel.
+
+        Args:
+            scenario_dto: The scenario to analyze
+
+        Returns:
+            List of suggestions for increasing diversity
+        """
+        if not self.recent_scenarios:
+            return []
+
+        new_features = self._extract_features(scenario_dto)
+        suggestions = []
+
+        # Count occurrences of each feature in history
+        company_counts = {}
+        segment_counts = {}
+        kpi_counts = {}
+        traffic_counts = {}
+
+        for recent in self.recent_scenarios:
+            company_counts[recent["company_type"]] = company_counts.get(recent["company_type"], 0) + 1
+            segment_counts[recent["user_segment"]] = segment_counts.get(recent["user_segment"], 0) + 1
+            kpi_counts[recent["primary_kpi"]] = kpi_counts.get(recent["primary_kpi"], 0) + 1
+            traffic_counts[recent["traffic_tier"]] = traffic_counts.get(recent["traffic_tier"], 0) + 1
+
+        # Suggest alternatives for overused features
+        if company_counts.get(new_features["company_type"], 0) >= 3:
+            underused = [ct for ct in ["Telehealth", "EdTech", "PropTech", "Gaming", "Logistics"]
+                        if company_counts.get(ct, 0) == 0]
+            if underused:
+                suggestions.append(f"Company type '{new_features['company_type']}' used frequently. Consider: {', '.join(underused[:3])}")
+
+        if segment_counts.get(new_features["user_segment"], 0) >= 3:
+            underused = [seg for seg in ["power users (top 10%)", "churned users (win-back)", "enterprise accounts"]
+                        if segment_counts.get(seg, 0) == 0]
+            if underused:
+                suggestions.append(f"User segment used frequently. Consider: {', '.join(underused[:3])}")
+
+        if traffic_counts.get(new_features["traffic_tier"], 0) >= 4:
+            underused = [tier for tier in ["early_stage", "enterprise"]
+                        if traffic_counts.get(tier, 0) <= 1]
+            if underused:
+                suggestions.append(f"Traffic tier '{new_features['traffic_tier']}' common. Consider: {', '.join(underused)}")
+
+        return suggestions
+
+    def get_history_summary(self) -> Dict:
+        """
+        Get a summary of the scenario history for diversity analysis.
+
+        Returns:
+            Dictionary with counts of each feature value
+        """
+        if not self.recent_scenarios:
+            return {"total": 0}
+
+        summary = {
+            "total": len(self.recent_scenarios),
+            "company_types": {},
+            "user_segments": {},
+            "kpis": {},
+            "traffic_tiers": {},
+            "effect_tiers": {}
+        }
+
+        # Map feature keys to summary keys
+        key_mapping = {
+            "company_type": "company_types",
+            "user_segment": "user_segments",
+            "primary_kpi": "kpis",
+            "traffic_tier": "traffic_tiers",
+            "effect_tier": "effect_tiers"
+        }
+
+        for scenario in self.recent_scenarios:
+            for feature_key, summary_key in key_mapping.items():
+                value = scenario.get(feature_key, "unknown")
+                summary[summary_key][value] = summary[summary_key].get(value, 0) + 1
+
+        return summary
+
+    def clear_history(self) -> None:
+        """Clear the scenario history."""
+        self.recent_scenarios = []
+
+
+# Global novelty scorer instance for use across the application
+_novelty_scorer: Optional[NoveltyScorer] = None
+
+
+def get_novelty_scorer(history_size: int = 20) -> NoveltyScorer:
+    """
+    Get the global novelty scorer instance (singleton pattern).
+
+    Args:
+        history_size: Number of recent scenarios to track
+
+    Returns:
+        The global NoveltyScorer instance
+    """
+    global _novelty_scorer
+    if _novelty_scorer is None:
+        _novelty_scorer = NoveltyScorer(history_size=history_size)
+    return _novelty_scorer
+
+
+def score_scenario_novelty(scenario_dto: ScenarioResponseDTO) -> Tuple[float, List[str]]:
+    """
+    Convenience function to score novelty and get suggestions.
+
+    Args:
+        scenario_dto: The scenario to score
+
+    Returns:
+        Tuple of (novelty_score, list_of_suggestions)
+    """
+    scorer = get_novelty_scorer()
+    novelty = scorer.score_novelty(scenario_dto)
+    suggestions = scorer.get_diversity_suggestions(scenario_dto)
+    return novelty, suggestions
+
+
+def record_generated_scenario(scenario_dto: ScenarioResponseDTO) -> None:
+    """
+    Record a generated scenario in the novelty history.
+
+    Call this after successfully generating a scenario to update the history.
+
+    Args:
+        scenario_dto: The scenario to record
+    """
+    scorer = get_novelty_scorer()
+    scorer.record_scenario(scenario_dto)
