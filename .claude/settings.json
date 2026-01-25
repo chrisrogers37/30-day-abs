@@ -3,6 +3,9 @@
     "allow": [
       "Bash(python:*)",
       "Bash(python3:*)",
+      "Bash(./venv/bin/python:*)",
+      "Bash(./venv/bin/pytest:*)",
+      "Bash(./venv/bin/streamlit:*)",
       "Bash(pytest:*)",
       "Bash(pytest-cov:*)",
       "Bash(mypy:*)",
@@ -32,7 +35,12 @@
       "Bash(tail:*)",
       "Bash(wc:*)",
       "Bash(mkdir:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(curl:*)",
+      "Bash(sleep:*)",
+      "Bash(rm:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   },

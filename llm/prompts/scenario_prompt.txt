@@ -59,11 +59,12 @@ Healthcare: "Telehealth", "Health Tracking", "Mental Health App"
 Industrial: "Logistics", "HR Tech", "EdTech", "PropTech"
 Legacy: "SaaS", "E-commerce", "Media", "Fintech", "Marketplace", "Gaming"
 
-## User Segments (vary across these):
+## User Segments (MUST use EXACTLY one of these values):
 Lifecycle: "first-time visitors", "new signups (< 7 days)", "activated users", "power users (top 10%)", "churned users (win-back)"
 Value: "free tier users", "trial users", "paid subscribers", "enterprise accounts", "high-LTV customers"
 Behavioral: "mobile app users", "desktop users", "cart abandoners", "repeat purchasers"
 Legacy: "new_users", "returning_users", "premium_users", "trial_users", "all_users"
+IMPORTANT: Do NOT create custom segment names like "all passengers" or "shoppers" - use ONLY the exact values listed above.
 
 ## Metrics: "conversion_rate", "signup_rate", "activation_rate", "click_through_rate", "engagement_rate", "day_7_retention", "churn_rate"
 

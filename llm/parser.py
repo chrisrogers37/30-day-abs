@@ -82,9 +82,48 @@ from pydantic import ValidationError
 
 from schemas.scenario import ScenarioResponseDTO, ScenarioDTO, LlmExpectedDTO
 from schemas.design import DesignParamsDTO
-from schemas.shared import AllocationDTO
+from schemas.shared import AllocationDTO, UserSegment, CompanyType
 
 from core.logging import get_logger
+
+# Mapping of common LLM-generated values to valid enum values
+USER_SEGMENT_FALLBACKS = {
+    # Common creative alternatives the LLM might generate
+    "all passengers": UserSegment.ALL_USERS,
+    "passengers": UserSegment.ALL_USERS,
+    "all customers": UserSegment.ALL_USERS,
+    "customers": UserSegment.ALL_USERS,
+    "all visitors": UserSegment.NEW_VISITORS,
+    "visitors": UserSegment.NEW_VISITORS,
+    "general users": UserSegment.ALL_USERS,
+    "registered users": UserSegment.RETURNING_USERS,
+    "active users": UserSegment.ENGAGED_USERS,
+    "subscribers": UserSegment.PAID_USERS,
+    "members": UserSegment.PAID_USERS,
+    "guests": UserSegment.NEW_VISITORS,
+    "shoppers": UserSegment.ALL_USERS,
+    "buyers": UserSegment.REPEAT_PURCHASERS,
+    "prospects": UserSegment.NEW_VISITORS,
+    "leads": UserSegment.NEW_VISITORS,
+}
+
+COMPANY_TYPE_FALLBACKS = {
+    # Common creative alternatives
+    "airline": CompanyType.TRAVEL,
+    "airlines": CompanyType.TRAVEL,
+    "travel": CompanyType.TRAVEL,
+    "hotel": CompanyType.TRAVEL,
+    "ride-share": CompanyType.MARKETPLACE,
+    "rideshare": CompanyType.MARKETPLACE,
+    "bank": CompanyType.NEOBANK,
+    "retail": CompanyType.ECOMMERCE_DTC,
+    "online retail": CompanyType.ECOMMERCE_DTC,
+    "software": CompanyType.SAAS_B2B,
+    "saas company": CompanyType.SAAS_B2B,
+    "mobile app": CompanyType.FITNESS_APP,
+    "app": CompanyType.SAAS_B2C,
+    "platform": CompanyType.MARKETPLACE,
+}
 
 logger = get_logger(__name__)
 
@@ -377,18 +416,81 @@ class LLMOutputParser:
             self.parsing_errors.append(f"Unexpected JSON error: {str(e)}")
             return None
     
+    def _normalize_enum_values(self, data: Dict) -> Dict:
+        """
+        Normalize enum values that the LLM might generate incorrectly.
+
+        Maps common creative alternatives to valid enum values before
+        Pydantic validation.
+        """
+        if 'scenario' not in data:
+            return data
+
+        scenario = data['scenario']
+
+        # Normalize user_segment
+        if 'user_segment' in scenario:
+            segment = scenario['user_segment']
+            if isinstance(segment, str):
+                segment_lower = segment.lower().strip()
+
+                # Check if it's already a valid enum value
+                valid_segments = {s.value.lower() for s in UserSegment}
+                if segment_lower not in valid_segments:
+                    # Try fallback mapping
+                    if segment_lower in USER_SEGMENT_FALLBACKS:
+                        original = segment
+                        scenario['user_segment'] = USER_SEGMENT_FALLBACKS[segment_lower].value
+                        logger.warning(
+                            f"Normalized user_segment: '{original}' -> '{scenario['user_segment']}'"
+                        )
+                    else:
+                        # Default fallback to all_users
+                        logger.warning(
+                            f"Unknown user_segment '{segment}', defaulting to 'all_users'"
+                        )
+                        scenario['user_segment'] = UserSegment.ALL_USERS.value
+
+        # Normalize company_type
+        if 'company_type' in scenario:
+            company = scenario['company_type']
+            if isinstance(company, str):
+                company_lower = company.lower().strip()
+
+                # Check if it's already a valid enum value
+                valid_companies = {c.value.lower() for c in CompanyType}
+                if company_lower not in valid_companies:
+                    # Try fallback mapping
+                    if company_lower in COMPANY_TYPE_FALLBACKS:
+                        original = company
+                        scenario['company_type'] = COMPANY_TYPE_FALLBACKS[company_lower].value
+                        logger.warning(
+                            f"Normalized company_type: '{original}' -> '{scenario['company_type']}'"
+                        )
+                    else:
+                        # Default fallback to E-commerce
+                        logger.warning(
+                            f"Unknown company_type '{company}', defaulting to 'E-commerce'"
+                        )
+                        scenario['company_type'] = CompanyType.ECOMMERCE.value
+
+        return data
+
     def _validate_schema(self, data: Dict) -> Optional[ScenarioResponseDTO]:
         """Validate data against Pydantic schemas."""
         self.validation_errors = []
-        
+
         try:
+            # Normalize enum values before validation
+            data = self._normalize_enum_values(data)
+
             # Validate required top-level keys
             required_keys = ['scenario', 'design_params', 'llm_expected']
             missing_keys = [key for key in required_keys if key not in data]
             if missing_keys:
                 self.validation_errors.append(f"Missing required keys: {missing_keys}")
                 return None
-            
+
             # Validate scenario
             try:
                 scenario_dto = ScenarioDTO(**data['scenario'])
