@@ -13,6 +13,7 @@ from .types import (
     AnalysisResult,
     BusinessImpact,
     TestQuality,
+    StatisticalTestSelection,
 )
 
 from .validation import (
@@ -26,6 +27,8 @@ from .validation import (
 
 from .analyze import (
     make_rollout_decision,
+    select_statistical_test,
+    analyze_results,
 )
 
 from .scoring import (
@@ -38,12 +41,13 @@ from .scoring import (
 
 __all__ = [
     "Allocation",
-    "DesignParams", 
+    "DesignParams",
     "SampleSize",
     "SimResult",
     "AnalysisResult",
     "BusinessImpact",
     "TestQuality",
+    "StatisticalTestSelection",
     "ValidationResult",
     "ScoringResult",
     "validate_design_answer",
@@ -51,6 +55,8 @@ __all__ = [
     "score_design_answers",
     "score_analysis_answers",
     "make_rollout_decision",
+    "select_statistical_test",
+    "analyze_results",
     "AnswerKey",
     "QuizResult",
     "generate_design_answer_key",
