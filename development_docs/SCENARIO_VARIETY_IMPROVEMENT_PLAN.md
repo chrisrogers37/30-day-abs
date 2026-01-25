@@ -17,7 +17,7 @@ The 30 Day A/Bs application currently produces repetitive, "cookie cutter" scena
 | **Phase 3** | Question & Analysis Variety | ✅ Complete |
 | **Phase 4** | Scenario Complexity Dimensions | ✅ Complete |
 | **Phase 5** | LLM Prompt Restructure | ✅ Complete |
-| **UI Updates** | Streamlit Integration | ⏳ Pending |
+| **UI Updates** | Streamlit Integration | ✅ Complete |
 
 ---
 
@@ -515,16 +515,16 @@ After implementation, we should see:
 
 ## Remaining Work
 
-### UI Integration (streamlit_app.py)
-The backend implementation is complete, but the Streamlit UI needs updates to:
+### UI Integration (streamlit_app.py) ✅ COMPLETE
+The Streamlit UI has been updated with:
 
-1. **Variable Question Display**: Wire up the question bank to display different question sets
-2. **Planning Phase UI**: Add new section for planning questions before design phase
-3. **Interpretation Phase UI**: Add section for interpretation questions after analysis
-4. **Novelty Indicators**: Optionally show novelty score and diversity suggestions
-5. **Advanced Question Selection**: Allow users to configure difficulty levels
+1. **Variable Question Selection**: Questions selected based on difficulty setting
+2. **Planning Phase UI**: Optional section for planning questions before design phase
+3. **Interpretation Phase UI**: Optional section for interpretation questions after analysis
+4. **Difficulty Selector**: Users can choose EASY, MEDIUM, HARD, or MIXED difficulty
+5. **Question Pool Summary**: Shows total questions available in each category
 
-### Statistical Test Full Integration
+### Statistical Test Full Integration (Lower Priority)
 While chi-square and Fisher's exact tests are implemented in `core/analyze.py`, their integration needs:
 
 1. **Test Selection Logic**: Automatic selection based on sample size and metric type
@@ -547,6 +547,7 @@ While chi-square and Fisher's exact tests are implemented in `core/analyze.py`, 
 
 ## Changelog
 
+- **2025-01-25**: UI Integration complete - Added planning/interpretation phases, difficulty selector, question pool summary
 - **2025-01-25**: Phase 4.2-4.3 complete - Added 25 planning/interpretation questions, integrated novelty scorer into generator
 - **2025-01-24**: Phases 1-5 core implementation complete - Question bank, novelty scoring, variable scoring
 - **2025-01-24**: Initial plan created based on codebase review
