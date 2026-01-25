@@ -1,12 +1,25 @@
 # Scenario Variety Improvement Plan
 
 **Date:** January 2025
-**Status:** In Progress
+**Status:** Mostly Complete
 **Branch:** `claude/review-project-codebase-I80YU`
 
 ## Executive Summary
 
 The 30 Day A/Bs application currently produces repetitive, "cookie cutter" scenarios despite using LLM generation. This document outlines a comprehensive plan to dramatically expand scenario variety while maintaining educational integrity.
+
+## Implementation Status Overview
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Phase 1** | Business Context Expansion | ✅ Complete |
+| **Phase 2** | Parameter Space Expansion | ✅ Complete |
+| **Phase 3** | Question & Analysis Variety | ✅ Complete |
+| **Phase 4** | Scenario Complexity Dimensions | ✅ Complete |
+| **Phase 5** | LLM Prompt Restructure | ✅ Complete |
+| **UI Updates** | Streamlit Integration | ⏳ Pending |
+
+---
 
 ## Problem Statement
 
@@ -81,9 +94,15 @@ The 30 Day A/Bs application currently produces repetitive, "cookie cutter" scena
 
 ## Implementation Plan
 
-### Phase 1: Expand Business Context Variety
+### Phase 1: Expand Business Context Variety ✅ COMPLETE
 
 **Goal:** Make scenarios feel like different companies with different problems.
+
+**Implementation Summary:**
+- Expanded to 36 company types (from 7) across 5 industry categories
+- Expanded to 29 user segments (from 6) across lifecycle, value, behavioral, and geographic dimensions
+- Expanded to 27 KPI/metric types (from 4) including engagement, retention, and revenue metrics
+- Removed keyword validation constraints from guardrails
 
 #### 1.1 Expand Company Types & Industries
 **Files:** `schemas/shared.py`, `llm/prompts/scenario_prompt.txt`
@@ -202,9 +221,15 @@ Remove lines that warn when scenarios don't include expected keywords. Let LLM g
 
 ---
 
-### Phase 2: Expand Parameter Space
+### Phase 2: Expand Parameter Space ✅ COMPLETE
 
 **Goal:** Create mathematically distinct scenarios, not just narrative variations.
+
+**Implementation Summary:**
+- Widened traffic range from 100 to 10,000,000 (100,000x range vs original 10x)
+- Implemented metric-specific baseline ranges in guardrails
+- Added effect size profiles (incremental, significant, transformational, defensive)
+- Alpha now ranges 0.01-0.10, Power now ranges 0.80-0.95 with business justification
 
 #### 2.1 Widen Traffic Range
 **Files:** `llm/guardrails.py`, `core/types.py`, `llm/prompts/scenario_prompt.txt`
@@ -267,9 +292,17 @@ Require LLM to justify alpha/power choices based on business context rather than
 
 ---
 
-### Phase 3: Expand Question & Analysis Variety
+### Phase 3: Expand Question & Analysis Variety ✅ COMPLETE
 
 **Goal:** Users face different analytical challenges, not the same 13 questions every time.
+
+**Implementation Summary:**
+- Created `core/question_bank.py` with 50 questions across 4 categories
+- Implemented question ID-based validation in `core/validation.py`
+- Added variable question set support in `core/scoring.py`
+- Added selection functions with difficulty filtering and reproducible seeding
+- Chi-square and Fisher's exact test implementations in `core/analyze.py` (tests pending full integration)
+- Unequal allocation supported via `allocation` parameter in DesignParams
 
 #### 3.1 Question Pool System
 **Files:** New `core/question_bank.py`, modify `core/validation.py`
@@ -342,9 +375,15 @@ ALLOCATION_PROFILES = {
 
 ---
 
-### Phase 4: Add Scenario Complexity Dimensions
+### Phase 4: Add Scenario Complexity Dimensions ✅ COMPLETE
 
 **Goal:** Introduce realistic complications that require deeper thinking.
+
+**Implementation Summary:**
+- Created `schemas/complications.py` with 17 complication types across 4 categories
+- Added 12 planning questions (hypothesis formulation, test selection, experimental design)
+- Added 13 interpretation questions (business recommendations, limitations, follow-up)
+- Complication templates with severity levels, mitigation hints, and additional questions
 
 #### 4.1 Add Contextual Complications
 **File:** `llm/prompts/scenario_prompt.txt`, new `schemas/complications.py`
@@ -384,9 +423,16 @@ INTERPRETATION_QUESTIONS = {
 
 ---
 
-### Phase 5: Restructure LLM Prompt
+### Phase 5: Restructure LLM Prompt ✅ COMPLETE
 
 **Goal:** Remove template archetypes, encourage creative scenario generation.
+
+**Implementation Summary:**
+- Completely rewrote `llm/prompts/scenario_prompt.txt` - removed 30 hardcoded templates
+- Prompt trimmed to fit GPT-4 context window while maintaining rich variety guidance
+- Implemented `NoveltyScorer` class in `llm/guardrails.py` with feature extraction
+- Integrated novelty scoring into `llm/generator.py` - scores and records all scenarios
+- Generator now returns novelty_score and diversity_suggestions in results
 
 #### 5.1 New Prompt Philosophy
 
@@ -465,6 +511,42 @@ After implementation, we should see:
 
 ---
 
+---
+
+## Remaining Work
+
+### UI Integration (streamlit_app.py)
+The backend implementation is complete, but the Streamlit UI needs updates to:
+
+1. **Variable Question Display**: Wire up the question bank to display different question sets
+2. **Planning Phase UI**: Add new section for planning questions before design phase
+3. **Interpretation Phase UI**: Add section for interpretation questions after analysis
+4. **Novelty Indicators**: Optionally show novelty score and diversity suggestions
+5. **Advanced Question Selection**: Allow users to configure difficulty levels
+
+### Statistical Test Full Integration
+While chi-square and Fisher's exact tests are implemented in `core/analyze.py`, their integration needs:
+
+1. **Test Selection Logic**: Automatic selection based on sample size and metric type
+2. **UI Display**: Show which test was used and why
+3. **Question Pool Integration**: Add questions about test selection and assumptions
+
+---
+
+## Test Coverage Summary
+
+| Test File | Tests | Status |
+|-----------|-------|--------|
+| `tests/core/test_question_bank.py` | 47 | ✅ Pass |
+| `tests/core/test_validation_by_id.py` | 37 | ✅ Pass |
+| `tests/core/test_scoring_variable.py` | 14 | ✅ Pass |
+| `tests/llm/test_novelty_scoring.py` | 23 | ✅ Pass |
+| **Full Suite** | 445 | ✅ Pass (5 skipped) |
+
+---
+
 ## Changelog
 
+- **2025-01-25**: Phase 4.2-4.3 complete - Added 25 planning/interpretation questions, integrated novelty scorer into generator
+- **2025-01-24**: Phases 1-5 core implementation complete - Question bank, novelty scoring, variable scoring
 - **2025-01-24**: Initial plan created based on codebase review
