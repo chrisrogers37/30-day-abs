@@ -1,7 +1,7 @@
 # Scenario Variety Improvement Plan
 
 **Date:** January 2025
-**Status:** Mostly Complete
+**Status:** Complete
 **Branch:** `claude/review-project-codebase-I80YU`
 
 ## Executive Summary
@@ -524,12 +524,15 @@ The Streamlit UI has been updated with:
 4. **Difficulty Selector**: Users can choose EASY, MEDIUM, HARD, or MIXED difficulty
 5. **Question Pool Summary**: Shows total questions available in each category
 
-### Statistical Test Full Integration (Lower Priority)
-While chi-square and Fisher's exact tests are implemented in `core/analyze.py`, their integration needs:
+### Statistical Test Full Integration ✅ COMPLETE
+Chi-square and Fisher's exact tests are now fully integrated with automatic selection:
 
-1. **Test Selection Logic**: Automatic selection based on sample size and metric type
-2. **UI Display**: Show which test was used and why
-3. **Question Pool Integration**: Add questions about test selection and assumptions
+1. **Test Selection Logic**: `select_statistical_test()` automatically chooses the appropriate test based on sample size and expected cell counts
+   - Fisher's exact: When any expected cell count < 5
+   - Chi-square: When samples adequate for chi-square but < 30 per group
+   - Two-proportion z-test: When sample size >= 30 per group (normal approximation valid)
+2. **UI Display**: Streamlit UI shows which test was used with expandable reasoning section
+3. **Question Pool Integration**: Added 8 new test selection questions covering Fisher vs chi-square, expected cell counts, z-test assumptions, and practical application
 
 ---
 
@@ -538,15 +541,17 @@ While chi-square and Fisher's exact tests are implemented in `core/analyze.py`, 
 | Test File | Tests | Status |
 |-----------|-------|--------|
 | `tests/core/test_question_bank.py` | 47 | ✅ Pass |
+| `tests/core/test_analyze_statistical_tests.py` | 17 | ✅ Pass (2 skipped) |
 | `tests/core/test_validation_by_id.py` | 37 | ✅ Pass |
 | `tests/core/test_scoring_variable.py` | 14 | ✅ Pass |
 | `tests/llm/test_novelty_scoring.py` | 23 | ✅ Pass |
-| **Full Suite** | 445 | ✅ Pass (5 skipped) |
+| **Full Suite** | 457 | ✅ Pass (7 skipped) |
 
 ---
 
 ## Changelog
 
+- **2025-01-25**: Statistical test integration complete - Added automatic test selection, UI display, 8 new test selection questions
 - **2025-01-25**: UI Integration complete - Added planning/interpretation phases, difficulty selector, question pool summary
 - **2025-01-25**: Phase 4.2-4.3 complete - Added 25 planning/interpretation questions, integrated novelty scorer into generator
 - **2025-01-24**: Phases 1-5 core implementation complete - Question bank, novelty scoring, variable scoring
