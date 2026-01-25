@@ -14,14 +14,19 @@ from dataclasses import dataclass
 
 from .types import SimResult, DesignParams
 from .validation import (
-    ValidationResult, ScoringResult,
-    calculate_correct_design_answers, calculate_correct_analysis_answers,
-    score_answers_by_id, calculate_design_answer_by_id, calculate_analysis_answer_by_id
+    ScoringResult,
+    calculate_correct_design_answers,
+    calculate_correct_analysis_answers,
+    score_answers_by_id,
+    calculate_design_answer_by_id,
+    calculate_analysis_answer_by_id,
 )
 from .question_bank import (
-    Question, DESIGN_QUESTIONS, ANALYSIS_QUESTIONS,
-    get_question_by_id, get_default_design_questions, get_default_analysis_questions,
-    select_design_questions, select_analysis_questions
+    Question,
+    DESIGN_QUESTIONS,
+    get_question_by_id,
+    select_design_questions,
+    select_analysis_questions,
 )
 
 

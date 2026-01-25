@@ -75,14 +75,14 @@ Dependencies:
 
 import json
 import re
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 from pydantic import ValidationError
 
 from schemas.scenario import ScenarioResponseDTO, ScenarioDTO, LlmExpectedDTO
 from schemas.design import DesignParamsDTO
-from schemas.shared import AllocationDTO, UserSegment, CompanyType
+from schemas.shared import UserSegment, CompanyType
 
 from core.logging import get_logger
 
@@ -549,8 +549,9 @@ class LLMOutputParser:
             target_lift = design_params.get('target_lift_pct')
             treatment_rate = simulation_hints.get('treatment_conversion_rate')
             if baseline and treatment_rate and target_lift:
-                expected_treatment = baseline * (1 + target_lift)
-                actual_lift = (treatment_rate - baseline) / baseline if baseline > 0 else 0
+                actual_lift = (
+                    (treatment_rate - baseline) / baseline if baseline > 0 else 0
+                )
                 
                 if abs(actual_lift - target_lift) > 0.05:  # 5% tolerance
                     result.warnings.append(

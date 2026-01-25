@@ -6,7 +6,6 @@ sample sizes, test durations, and other design parameters.
 """
 
 import math
-from typing import Optional
 
 from .types import DesignParams, SampleSize
 from .logging import get_logger
@@ -99,7 +98,6 @@ def _get_z_score(alpha: float, direction: str) -> float:
             z_score = norm.ppf(1 - alpha)
         except ImportError:
             # Fallback approximation if scipy not available
-            import math
             # Simple approximation for common values
             if alpha < 0.01:
                 z_score = 2.576
@@ -133,11 +131,10 @@ def _calculate_achieved_power(p1: float, p2: float, n: int, alpha: float,
     """
     # Calculate standard error
     se = math.sqrt(p1 * (1 - p1) / n + p2 * (1 - p2) / n)
-    
-    # Calculate critical value
+
+    # Calculate critical z-score
     z_alpha = _get_z_score(alpha, direction)
-    critical_value = z_alpha * se
-    
+
     # Calculate z-score for the effect
     effect_size = abs(p2 - p1)
     z_effect = effect_size / se

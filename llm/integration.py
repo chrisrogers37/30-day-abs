@@ -68,11 +68,11 @@ Dependencies:
 - asyncio: Async support for concurrent operations
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 
-from .generator import LLMScenarioGenerator, GenerationResult
-from .parser import LLMOutputParser, ParsingResult
+from .generator import LLMScenarioGenerator
+from .parser import LLMOutputParser
 
 from core.types import DesignParams, Allocation, SimResult, AnalysisResult
 from core.design import compute_sample_size
@@ -80,8 +80,6 @@ from core.simulate import simulate_trial
 from core.analyze import analyze_results
 
 from schemas.scenario import ScenarioResponseDTO
-from schemas.design import DesignParamsDTO
-from schemas.shared import AllocationDTO
 
 from core.logging import get_logger
 

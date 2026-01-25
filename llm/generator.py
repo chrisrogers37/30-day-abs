@@ -72,19 +72,17 @@ Dependencies:
 
 import asyncio
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 from pathlib import Path
 
-from .client import LLMClient, LLMConfig, LLMProvider, LLMError
-from .parser import LLMOutputParser, ParsingResult
+from .client import LLMClient, LLMError
+from .parser import LLMOutputParser
 from .guardrails import (
-    LLMGuardrails, ValidationResult,
-    get_novelty_scorer, score_scenario_novelty, record_generated_scenario
+    LLMGuardrails, get_novelty_scorer, score_scenario_novelty, record_generated_scenario
 )
 
 from schemas.scenario import ScenarioResponseDTO, ScenarioRequestDTO
-from schemas.shared import CompanyType, UserSegment
 
 from core.logging import get_logger
 
@@ -529,7 +527,7 @@ async def test_scenario_generation():
     result = await generator.generate_scenario()
     
     if result.success:
-        print(f"✅ Scenario generated successfully!")
+        print("✅ Scenario generated successfully!")
         print(f"   Title: {result.scenario_dto.scenario.title}")
         print(f"   Company: {result.scenario_dto.scenario.company_type}")
         print(f"   Quality Score: {result.quality_score:.2f}")

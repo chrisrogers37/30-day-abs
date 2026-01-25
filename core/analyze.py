@@ -6,7 +6,7 @@ and generates detailed answer keys for user evaluation.
 """
 
 import math
-from typing import Dict, Tuple, Optional
+from typing import Tuple, Optional
 
 from .types import SimResult, AnalysisResult, BusinessImpact, TestQuality, DesignParams, StatisticalTestSelection
 from .design import _get_z_score
@@ -428,11 +428,10 @@ def _calculate_achieved_power(p1: float, p2: float, n1: int, n2: int,
     """
     # Calculate standard error
     se = math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
-    
-    # Calculate critical value
+
+    # Calculate critical z-score
     z_alpha = _get_z_score(alpha, direction)
-    critical_value = z_alpha * se
-    
+
     # Calculate z-score for the effect
     effect_size = abs(p2 - p1)
     z_effect = effect_size / se if se > 0 else 0
@@ -593,7 +592,6 @@ def calculate_business_impact(sim_result: SimResult,
     
     if revenue_per_conversion and monthly_traffic:
         # Estimate monthly revenue impact
-        baseline_conversions = monthly_traffic * sim_result.control_rate
         additional_conversions = monthly_traffic * absolute_lift
         revenue_impact_monthly = additional_conversions * revenue_per_conversion
         

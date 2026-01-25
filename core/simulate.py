@@ -7,9 +7,9 @@ conversion rates with proper statistical properties and noise patterns.
 
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
-from .types import DesignParams, SimResult, Allocation
+from .types import DesignParams, SimResult
 
 
 def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
@@ -44,8 +44,8 @@ def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
     
     # Treatment rate varies around the target lift with realistic uncertainty
     # This allows for both successful and unsuccessful experiments
-    target_treatment_rate = control_rate * (1 + params.target_lift_pct)
-    
+    # Target: control_rate * (1 + params.target_lift_pct)
+
     # Add realistic variation to treatment effect
     # 70% chance of achieving target lift, 20% chance of partial success, 10% chance of failure
     effect_variation = random.choices(

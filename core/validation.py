@@ -9,14 +9,15 @@ Supports both:
 2. New question ID-based validation (from question_bank.py)
 """
 
-from typing import Dict, Any, Optional, Tuple, List, Union
+from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass
 
 from .types import SimResult, DesignParams
 from .design import compute_sample_size
 from .question_bank import (
-    Question, AnswerType, DESIGN_QUESTIONS, ANALYSIS_QUESTIONS,
-    get_question_by_id, get_default_design_questions, get_default_analysis_questions
+    AnswerType,
+    DESIGN_QUESTIONS,
+    get_question_by_id,
 )
 
 
@@ -697,7 +698,6 @@ def calculate_design_answer_by_id(
 
     elif question_id == "sample_for_higher_power":
         # Recalculate sample size with power=0.95
-        from .types import Allocation
         high_power_params = DesignParams(
             baseline_conversion_rate=design_params.baseline_conversion_rate,
             target_lift_pct=design_params.target_lift_pct,
@@ -917,7 +917,6 @@ def score_answers_by_id(
         user_answer = user_answers.get(question_id)
 
         if user_answer is None:
-            question = get_question_by_id(question_id)
             # Calculate correct answer even for unanswered questions
             try:
                 if question_id in DESIGN_QUESTIONS:
