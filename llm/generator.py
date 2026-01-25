@@ -78,7 +78,10 @@ from pathlib import Path
 
 from .client import LLMClient, LLMConfig, LLMProvider, LLMError
 from .parser import LLMOutputParser, ParsingResult
-from .guardrails import LLMGuardrails, ValidationResult
+from .guardrails import (
+    LLMGuardrails, ValidationResult,
+    get_novelty_scorer, score_scenario_novelty, record_generated_scenario
+)
 
 from schemas.scenario import ScenarioResponseDTO, ScenarioRequestDTO
 from schemas.shared import CompanyType, UserSegment
@@ -92,11 +95,11 @@ logger = get_logger(__name__)
 class GenerationResult:
     """
     Comprehensive result dataclass for scenario generation operations.
-    
+
     This dataclass encapsulates all information about a scenario generation attempt,
     including the generated scenario, performance metrics, quality assessment,
-    and detailed error/warning information.
-    
+    novelty scoring, and detailed error/warning information.
+
     Attributes:
         success (bool): Whether the generation was successful
         scenario_dto (Optional[ScenarioResponseDTO]): The generated scenario DTO
@@ -105,8 +108,10 @@ class GenerationResult:
         errors (List[str]): List of errors encountered during generation
         warnings (List[str]): List of warnings about the generated scenario
         quality_score (float): Quality score of the generated scenario (0-1)
+        novelty_score (float): Novelty score compared to recent scenarios (0-1)
+        diversity_suggestions (List[str]): Suggestions to improve diversity
         used_fallback (bool): Whether a fallback scenario was used
-    
+
     Examples:
         Check generation success:
             result = await generator.generate_scenario()
@@ -114,15 +119,19 @@ class GenerationResult:
                 print(f"Generated: {result.scenario_dto.scenario.title}")
             else:
                 print(f"Generation failed: {result.errors}")
-        
+
         Analyze quality:
             if result.quality_score < 0.7:
                 print(f"Low quality scenario: {result.quality_score:.2f}")
-        
+
+        Check novelty:
+            if result.novelty_score < 0.5:
+                print(f"Similar to recent scenarios: {result.diversity_suggestions}")
+
         Performance monitoring:
             if result.total_time > 10.0:
                 print(f"Slow generation: {result.total_time:.2f}s")
-        
+
         Fallback detection:
             if result.used_fallback:
                 print("Warning: Used fallback scenario")
@@ -134,14 +143,18 @@ class GenerationResult:
     errors: List[str] = None
     warnings: List[str] = None
     quality_score: float = 0.0
+    novelty_score: float = 1.0
+    diversity_suggestions: List[str] = None
     used_fallback: bool = False
-    
+
     def __post_init__(self):
-        """Initialize empty lists for errors and warnings if None."""
+        """Initialize empty lists for errors, warnings, and suggestions if None."""
         if self.errors is None:
             self.errors = []
         if self.warnings is None:
             self.warnings = []
+        if self.diversity_suggestions is None:
+            self.diversity_suggestions = []
 
 
 class ScenarioGenerationError(Exception):
@@ -328,13 +341,36 @@ Return ONLY valid JSON."""
                             logger.warning("Quality below threshold, retrying...")
                             continue
                     
-                    # Success!
+                    # Success! Score novelty and record scenario
                     result.success = True
                     result.scenario_dto = parsing_result.scenario_dto
                     result.warnings.extend(validation_result.warnings)
                     result.total_time = time.time() - start_time
-                    
-                    logger.info(f"✅ Scenario generated successfully in {result.attempts} attempts, quality: {quality_score:.2f}")
+
+                    # Score novelty against recent scenarios
+                    try:
+                        novelty_score, diversity_suggestions = score_scenario_novelty(
+                            parsing_result.scenario_dto
+                        )
+                        result.novelty_score = novelty_score
+                        result.diversity_suggestions = diversity_suggestions
+
+                        if novelty_score < 0.5:
+                            result.warnings.append(
+                                f"Low novelty score ({novelty_score:.2f}): scenario similar to recent generations"
+                            )
+
+                        # Record this scenario for future novelty comparisons
+                        record_generated_scenario(parsing_result.scenario_dto)
+
+                        logger.info(f"Novelty score: {novelty_score:.2f}")
+                        if diversity_suggestions:
+                            logger.debug(f"Diversity suggestions: {diversity_suggestions}")
+                    except Exception as e:
+                        logger.warning(f"Novelty scoring failed: {e}")
+                        result.novelty_score = 1.0  # Assume novel if scoring fails
+
+                    logger.info(f"✅ Scenario generated successfully in {result.attempts} attempts, quality: {quality_score:.2f}, novelty: {result.novelty_score:.2f}")
                     logger.info(f"Scenario title: {parsing_result.scenario_dto.scenario.title}")
                     logger.info(f"Company type: {parsing_result.scenario_dto.scenario.company_type}")
                     return result
@@ -361,6 +397,18 @@ Return ONLY valid JSON."""
             result.scenario_dto = self.parser.create_fallback_scenario()
             result.success = True
             result.total_time = time.time() - start_time
+
+            # Score novelty for fallback scenario too
+            try:
+                novelty_score, diversity_suggestions = score_scenario_novelty(
+                    result.scenario_dto
+                )
+                result.novelty_score = novelty_score
+                result.diversity_suggestions = diversity_suggestions
+                record_generated_scenario(result.scenario_dto)
+            except Exception as e:
+                logger.warning(f"Novelty scoring for fallback failed: {e}")
+                result.novelty_score = 1.0
             
         except Exception as e:
             logger.error(f"Critical error in scenario generation: {e}")
@@ -437,11 +485,14 @@ Return ONLY valid JSON."""
     
     def get_generation_stats(self) -> Dict[str, any]:
         """Get statistics about scenario generation."""
+        novelty_scorer = get_novelty_scorer()
         return {
             "client_config": self.client.get_usage_stats(),
             "prompt_length": len(self.prompt_template),
             "guardrails_enabled": True,
-            "parser_enabled": True
+            "parser_enabled": True,
+            "novelty_scorer_enabled": True,
+            "novelty_history": novelty_scorer.get_history_summary()
         }
 
 

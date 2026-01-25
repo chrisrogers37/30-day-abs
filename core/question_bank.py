@@ -395,6 +395,331 @@ ANALYSIS_QUESTIONS: Dict[str, Question] = {
 # QUESTION SELECTION LOGIC
 # =============================================================================
 
+# =============================================================================
+# PLANNING PHASE QUESTION POOL
+# =============================================================================
+
+PLANNING_QUESTIONS: Dict[str, Question] = {
+    # Hypothesis Formulation Questions
+    "hypothesis_null": Question(
+        id="hypothesis_null",
+        text="What is the null hypothesis for this experiment?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.EASY,
+        tolerance=0,
+        skills_tested=["hypothesis_formulation", "experimental_design"],
+        hint="The null hypothesis typically states there is no effect or difference.",
+        explanation_template="H0: The treatment has no effect on {metric} (p_treatment = p_control)"
+    ),
+
+    "hypothesis_alternative": Question(
+        id="hypothesis_alternative",
+        text="What is the alternative hypothesis for this experiment?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.EASY,
+        tolerance=0,
+        skills_tested=["hypothesis_formulation", "experimental_design"],
+        hint="The alternative hypothesis states the expected effect exists.",
+        explanation_template="H1: The treatment improves {metric} (p_treatment > p_control)"
+    ),
+
+    "one_vs_two_tailed": Question(
+        id="one_vs_two_tailed",
+        text="Should this experiment use a one-tailed or two-tailed test? Why?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["test_selection", "hypothesis_testing"],
+        hint="One-tailed: directional hypothesis. Two-tailed: non-directional.",
+        explanation_template="Use {correct} test because {reason}"
+    ),
+
+    "test_type_selection": Question(
+        id="test_type_selection",
+        text="Which statistical test is most appropriate for this scenario?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["test_selection", "statistical_knowledge"],
+        hint="Consider the type of metric (proportion vs. continuous) and sample size.",
+        explanation_template="Use {correct} because {reason}"
+    ),
+
+    # Experimental Design Questions
+    "allocation_justification": Question(
+        id="allocation_justification",
+        text="Why might you choose a 50/50 allocation split for this experiment?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["experimental_design", "power_efficiency"],
+        hint="Consider statistical power and sample size efficiency.",
+        explanation_template="50/50 allocation maximizes power for a given total sample size."
+    ),
+
+    "unequal_allocation_reason": Question(
+        id="unequal_allocation_reason",
+        text="In what situation would an unequal allocation (e.g., 80/20) be appropriate?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["experimental_design", "risk_assessment"],
+        hint="Consider risk mitigation and business constraints.",
+        explanation_template="Unequal allocation when: {reason}"
+    ),
+
+    "primary_metric_selection": Question(
+        id="primary_metric_selection",
+        text="Why is it important to define a single primary metric before the experiment?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["experimental_design", "statistical_validity"],
+        hint="Consider the risks of multiple testing and p-hacking.",
+        explanation_template="Single primary metric prevents multiple testing inflation and p-hacking."
+    ),
+
+    "guardrail_metrics": Question(
+        id="guardrail_metrics",
+        text="What guardrail metrics should be monitored alongside the primary metric?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.TEXT,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["experimental_design", "business_acumen"],
+        hint="Think about what could go wrong if we only optimize for the primary metric.",
+        explanation_template="Guardrail metrics protect against unintended consequences."
+    ),
+
+    # Risk Assessment Questions
+    "alpha_justification": Question(
+        id="alpha_justification",
+        text="When might you use a stricter alpha (e.g., 0.01 instead of 0.05)?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["statistical_thresholds", "risk_assessment"],
+        hint="Consider the cost of false positives in this context.",
+        explanation_template="Stricter alpha when: {reason}"
+    ),
+
+    "power_justification": Question(
+        id="power_justification",
+        text="Why might you want 90% power instead of the standard 80%?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["power_analysis", "risk_assessment"],
+        hint="Consider the cost of missing a real effect.",
+        explanation_template="Higher power when: {reason}"
+    ),
+
+    "minimum_runtime": Question(
+        id="minimum_runtime",
+        text="Why is it important to run the experiment for at least one full week?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.EASY,
+        tolerance=0,
+        skills_tested=["experimental_design", "seasonality_awareness"],
+        hint="Think about how user behavior might vary during the week.",
+        explanation_template="Full week captures day-of-week effects and natural variance cycles."
+    ),
+
+    "pre_registration": Question(
+        id="pre_registration",
+        text="What are the benefits of pre-registering your analysis plan?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["experimental_rigor", "statistical_validity"],
+        hint="Consider how decisions made after seeing data can bias results.",
+        explanation_template="Pre-registration prevents HARKing and p-hacking."
+    ),
+}
+
+
+# =============================================================================
+# INTERPRETATION PHASE QUESTION POOL
+# =============================================================================
+
+INTERPRETATION_QUESTIONS: Dict[str, Question] = {
+    # Result Interpretation Questions
+    "statistical_vs_practical": Question(
+        id="statistical_vs_practical",
+        text="A result is statistically significant but the lift is only 2% of the target MDE. What do you recommend?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["decision_making", "business_judgment"],
+        hint="Statistical significance doesn't always mean business value.",
+        explanation_template="Consider practical significance: observed effect vs. business needs."
+    ),
+
+    "inconclusive_results": Question(
+        id="inconclusive_results",
+        text="The experiment ended with p=0.08. What are the appropriate next steps?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["decision_making", "uncertainty_handling"],
+        hint="Consider options beyond simple accept/reject.",
+        explanation_template="Options include: extend experiment, larger MDE, iterate on treatment."
+    ),
+
+    "negative_result_value": Question(
+        id="negative_result_value",
+        text="The experiment shows a significant negative effect. Is this a failed experiment?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.BOOLEAN,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["learning_mindset", "experimental_value"],
+        hint="Consider what learning value a negative result provides.",
+        explanation_template="Negative results prevent bad rollouts and inform future experiments."
+    ),
+
+    # Business Communication Questions
+    "stakeholder_summary": Question(
+        id="stakeholder_summary",
+        text="How would you summarize this experiment result for non-technical stakeholders?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.TEXT,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["communication", "business_translation"],
+        hint="Focus on business impact, not statistical details.",
+        explanation_template="Lead with impact and recommendation, simplify statistics."
+    ),
+
+    "confidence_communication": Question(
+        id="confidence_communication",
+        text="How would you communicate the uncertainty in this result to leadership?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.TEXT,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["communication", "uncertainty_quantification"],
+        hint="Use confidence intervals and probabilistic language.",
+        explanation_template="Use ranges and likelihood language: 'We're 95% confident the true effect is...'"
+    ),
+
+    "revenue_projection": Question(
+        id="revenue_projection",
+        text="Based on the observed lift, what is the estimated annual revenue impact?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.NUMERIC,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0.10,  # 10% tolerance for estimation
+        skills_tested=["business_impact", "financial_translation"],
+        hint="Multiply daily impact by 365, then by average conversion value.",
+        explanation_template="Annual impact = Daily traffic × Lift × 365 × Average value per conversion"
+    ),
+
+    # Limitations and Caveats
+    "external_validity": Question(
+        id="external_validity",
+        text="What factors might limit the generalizability of these results?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.TEXT,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["critical_thinking", "experimental_limitations"],
+        hint="Consider timing, segment, and context factors.",
+        explanation_template="Factors: seasonality, user segment, geography, competitive landscape"
+    ),
+
+    "novelty_effect_risk": Question(
+        id="novelty_effect_risk",
+        text="How would you determine if the observed lift is due to novelty effects?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["effect_persistence", "analytical_rigor"],
+        hint="Consider how to track effect over time.",
+        explanation_template="Monitor lift decay over time; compare early vs. late cohorts."
+    ),
+
+    "survivorship_bias": Question(
+        id="survivorship_bias",
+        text="Could survivorship bias affect the interpretation of these results?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.BOOLEAN,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["bias_awareness", "experimental_validity"],
+        hint="Consider if you're only measuring users who stayed.",
+        explanation_template="Risk if analysis excludes users who churned during experiment."
+    ),
+
+    # Follow-up Planning
+    "follow_up_experiment": Question(
+        id="follow_up_experiment",
+        text="What follow-up experiment would you recommend based on these results?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.TEXT,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["experimental_iteration", "strategic_thinking"],
+        hint="Consider optimizing the winner or exploring variants.",
+        explanation_template="Options: optimize winner, test on new segments, refine treatment."
+    ),
+
+    "holdout_recommendation": Question(
+        id="holdout_recommendation",
+        text="Should you maintain a holdout group after rolling out the winner? Why?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["long_term_validation", "experimental_rigor"],
+        hint="Consider long-term effect monitoring.",
+        explanation_template="Holdouts help detect effect decay and enable long-term impact measurement."
+    ),
+
+    "segment_analysis": Question(
+        id="segment_analysis",
+        text="What segments would you analyze to understand heterogeneous treatment effects?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.TEXT,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["segmentation", "analytical_depth"],
+        hint="Think about user attributes that might moderate the effect.",
+        explanation_template="Common segments: device type, tenure, usage frequency, geography."
+    ),
+
+    "ci_interpretation": Question(
+        id="ci_interpretation",
+        text="The 95% CI for the lift is [-0.2%, +1.8%]. What does this tell you about the true effect?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["confidence_interval_interpretation", "uncertainty_quantification"],
+        hint="Consider what values are plausible given this interval.",
+        explanation_template="CI including zero means we cannot rule out no effect with 95% confidence."
+    ),
+}
+
+
+# =============================================================================
+# QUESTION SELECTION LOGIC
+# =============================================================================
+
 def get_default_design_questions() -> List[str]:
     """Return the default set of design question IDs (backward compatible)."""
     return [
@@ -490,15 +815,145 @@ def select_analysis_questions(
     return random.sample(pool, count)
 
 
+def get_default_planning_questions() -> List[str]:
+    """Return the default set of planning question IDs."""
+    return [
+        "hypothesis_null",
+        "hypothesis_alternative",
+        "one_vs_two_tailed",
+        "primary_metric_selection",
+        "minimum_runtime",
+    ]
+
+
+def get_default_interpretation_questions() -> List[str]:
+    """Return the default set of interpretation question IDs."""
+    return [
+        "statistical_vs_practical",
+        "inconclusive_results",
+        "ci_interpretation",
+        "holdout_recommendation",
+        "follow_up_experiment",
+    ]
+
+
+def select_planning_questions(
+    count: int = 5,
+    difficulty: Optional[QuestionDifficulty] = None,
+    seed: Optional[int] = None
+) -> List[Question]:
+    """
+    Select a set of planning phase questions.
+
+    Args:
+        count: Number of questions to select
+        difficulty: Optional filter by difficulty
+        seed: Random seed for reproducibility
+
+    Returns:
+        List of selected Question objects
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    pool = list(PLANNING_QUESTIONS.values())
+
+    if difficulty:
+        pool = [q for q in pool if q.difficulty == difficulty]
+
+    count = min(count, len(pool))
+    return random.sample(pool, count)
+
+
+def select_interpretation_questions(
+    count: int = 5,
+    difficulty: Optional[QuestionDifficulty] = None,
+    seed: Optional[int] = None
+) -> List[Question]:
+    """
+    Select a set of interpretation phase questions.
+
+    Args:
+        count: Number of questions to select
+        difficulty: Optional filter by difficulty
+        seed: Random seed for reproducibility
+
+    Returns:
+        List of selected Question objects
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    pool = list(INTERPRETATION_QUESTIONS.values())
+
+    if difficulty:
+        pool = [q for q in pool if q.difficulty == difficulty]
+
+    count = min(count, len(pool))
+    return random.sample(pool, count)
+
+
+def select_advanced_questions(
+    planning_count: int = 3,
+    interpretation_count: int = 3,
+    difficulty: Optional[QuestionDifficulty] = None,
+    seed: Optional[int] = None
+) -> List[Question]:
+    """
+    Select a mixed set of advanced (planning + interpretation) questions.
+
+    Args:
+        planning_count: Number of planning questions
+        interpretation_count: Number of interpretation questions
+        difficulty: Optional filter by difficulty
+        seed: Random seed for reproducibility
+
+    Returns:
+        List of selected Question objects
+    """
+    planning = select_planning_questions(planning_count, difficulty, seed)
+    interpretation = select_interpretation_questions(interpretation_count, difficulty, seed)
+    return planning + interpretation
+
+
 def get_question_by_id(question_id: str) -> Optional[Question]:
-    """Get a question by its ID from either pool."""
+    """Get a question by its ID from any pool."""
     if question_id in DESIGN_QUESTIONS:
         return DESIGN_QUESTIONS[question_id]
     if question_id in ANALYSIS_QUESTIONS:
         return ANALYSIS_QUESTIONS[question_id]
+    if question_id in PLANNING_QUESTIONS:
+        return PLANNING_QUESTIONS[question_id]
+    if question_id in INTERPRETATION_QUESTIONS:
+        return INTERPRETATION_QUESTIONS[question_id]
     return None
 
 
 def get_all_questions() -> Dict[str, Question]:
-    """Get all questions from both pools."""
-    return {**DESIGN_QUESTIONS, **ANALYSIS_QUESTIONS}
+    """Get all questions from all pools."""
+    return {
+        **DESIGN_QUESTIONS,
+        **ANALYSIS_QUESTIONS,
+        **PLANNING_QUESTIONS,
+        **INTERPRETATION_QUESTIONS
+    }
+
+
+def get_questions_by_category(category: QuestionCategory) -> Dict[str, Question]:
+    """Get all questions from a specific category."""
+    all_questions = get_all_questions()
+    return {
+        qid: q for qid, q in all_questions.items()
+        if q.category == category
+    }
+
+
+def get_question_pool_summary() -> Dict[str, int]:
+    """Get a summary of question counts by pool."""
+    return {
+        "design": len(DESIGN_QUESTIONS),
+        "analysis": len(ANALYSIS_QUESTIONS),
+        "planning": len(PLANNING_QUESTIONS),
+        "interpretation": len(INTERPRETATION_QUESTIONS),
+        "total": len(get_all_questions())
+    }

@@ -5,10 +5,12 @@ Tests for core.question_bank module - Question pool system for variable quizzes.
 import pytest
 from core.question_bank import (
     Question, QuestionCategory, QuestionDifficulty, AnswerType,
-    DESIGN_QUESTIONS, ANALYSIS_QUESTIONS,
-    get_question_by_id, get_all_questions,
+    DESIGN_QUESTIONS, ANALYSIS_QUESTIONS, PLANNING_QUESTIONS, INTERPRETATION_QUESTIONS,
+    get_question_by_id, get_all_questions, get_questions_by_category, get_question_pool_summary,
     get_default_design_questions, get_default_analysis_questions,
-    select_design_questions, select_analysis_questions
+    get_default_planning_questions, get_default_interpretation_questions,
+    select_design_questions, select_analysis_questions,
+    select_planning_questions, select_interpretation_questions, select_advanced_questions
 )
 
 
@@ -97,16 +99,25 @@ class TestQuestionLookup:
 
     @pytest.mark.unit
     def test_get_all_questions(self):
-        """Should return all questions from both pools."""
+        """Should return all questions from all pools."""
         all_questions = get_all_questions()
-        assert len(all_questions) == len(DESIGN_QUESTIONS) + len(ANALYSIS_QUESTIONS)
+        expected_count = (
+            len(DESIGN_QUESTIONS) + len(ANALYSIS_QUESTIONS) +
+            len(PLANNING_QUESTIONS) + len(INTERPRETATION_QUESTIONS)
+        )
+        assert len(all_questions) == expected_count
 
-        # Check that all design questions are included
+        # Check that all questions from each pool are included
         for qid in DESIGN_QUESTIONS:
             assert qid in all_questions
 
-        # Check that all analysis questions are included
         for qid in ANALYSIS_QUESTIONS:
+            assert qid in all_questions
+
+        for qid in PLANNING_QUESTIONS:
+            assert qid in all_questions
+
+        for qid in INTERPRETATION_QUESTIONS:
             assert qid in all_questions
 
 
@@ -224,3 +235,249 @@ class TestQuestionDataclassFeatures:
         question = get_question_by_id("mde_absolute")
         assert hasattr(question, 'explanation_template')
         assert isinstance(question.explanation_template, str)
+
+
+class TestPlanningQuestions:
+    """Test planning phase question definitions and selection."""
+
+    @pytest.mark.unit
+    def test_planning_questions_have_required_fields(self):
+        """All planning questions should have required fields."""
+        for qid, question in PLANNING_QUESTIONS.items():
+            assert question.id == qid, f"Question ID mismatch for {qid}"
+            assert question.text, f"Question {qid} missing text"
+            assert isinstance(question.category, QuestionCategory)
+            assert isinstance(question.answer_type, AnswerType)
+            assert isinstance(question.difficulty, QuestionDifficulty)
+            assert question.tolerance >= 0, f"Question {qid} has negative tolerance"
+
+    @pytest.mark.unit
+    def test_planning_questions_count(self):
+        """Should have at least 10 planning questions."""
+        assert len(PLANNING_QUESTIONS) >= 10
+
+    @pytest.mark.unit
+    def test_planning_questions_category(self):
+        """All planning questions should be in PLANNING category."""
+        for qid, question in PLANNING_QUESTIONS.items():
+            assert question.category == QuestionCategory.PLANNING, f"{qid} has wrong category"
+
+    @pytest.mark.unit
+    def test_planning_questions_have_hints(self):
+        """Planning questions should have hints."""
+        for qid, question in PLANNING_QUESTIONS.items():
+            assert question.hint is not None, f"Question {qid} missing hint"
+            assert len(question.hint) > 0, f"Question {qid} has empty hint"
+
+    @pytest.mark.unit
+    def test_get_question_by_id_planning(self):
+        """Should return correct planning question by ID."""
+        question = get_question_by_id("hypothesis_null")
+        assert question is not None
+        assert question.id == "hypothesis_null"
+        assert question.category == QuestionCategory.PLANNING
+
+    @pytest.mark.unit
+    def test_default_planning_questions(self):
+        """Default planning questions should be valid IDs."""
+        default_ids = get_default_planning_questions()
+        assert len(default_ids) == 5
+
+        for qid in default_ids:
+            question = get_question_by_id(qid)
+            assert question is not None, f"Invalid default planning question: {qid}"
+            assert qid in PLANNING_QUESTIONS
+
+    @pytest.mark.unit
+    def test_select_planning_questions_default(self):
+        """Should select 5 planning questions by default."""
+        questions = select_planning_questions(seed=42)
+        assert len(questions) == 5
+
+    @pytest.mark.unit
+    def test_select_planning_questions_by_difficulty(self):
+        """Should filter planning questions by difficulty."""
+        questions = select_planning_questions(
+            count=10,
+            difficulty=QuestionDifficulty.HARD,
+            seed=42
+        )
+        for q in questions:
+            assert q.difficulty == QuestionDifficulty.HARD
+
+    @pytest.mark.unit
+    def test_select_planning_questions_reproducible(self):
+        """Same seed should produce same selection."""
+        q1 = select_planning_questions(count=3, seed=42)
+        q2 = select_planning_questions(count=3, seed=42)
+        assert [q.id for q in q1] == [q.id for q in q2]
+
+
+class TestInterpretationQuestions:
+    """Test interpretation phase question definitions and selection."""
+
+    @pytest.mark.unit
+    def test_interpretation_questions_have_required_fields(self):
+        """All interpretation questions should have required fields."""
+        for qid, question in INTERPRETATION_QUESTIONS.items():
+            assert question.id == qid, f"Question ID mismatch for {qid}"
+            assert question.text, f"Question {qid} missing text"
+            assert isinstance(question.category, QuestionCategory)
+            assert isinstance(question.answer_type, AnswerType)
+            assert isinstance(question.difficulty, QuestionDifficulty)
+            assert question.tolerance >= 0, f"Question {qid} has negative tolerance"
+
+    @pytest.mark.unit
+    def test_interpretation_questions_count(self):
+        """Should have at least 10 interpretation questions."""
+        assert len(INTERPRETATION_QUESTIONS) >= 10
+
+    @pytest.mark.unit
+    def test_interpretation_questions_category(self):
+        """All interpretation questions should be in INTERPRETATION category."""
+        for qid, question in INTERPRETATION_QUESTIONS.items():
+            assert question.category == QuestionCategory.INTERPRETATION, f"{qid} has wrong category"
+
+    @pytest.mark.unit
+    def test_interpretation_questions_have_hints(self):
+        """Interpretation questions should have hints."""
+        for qid, question in INTERPRETATION_QUESTIONS.items():
+            assert question.hint is not None, f"Question {qid} missing hint"
+            assert len(question.hint) > 0, f"Question {qid} has empty hint"
+
+    @pytest.mark.unit
+    def test_get_question_by_id_interpretation(self):
+        """Should return correct interpretation question by ID."""
+        question = get_question_by_id("statistical_vs_practical")
+        assert question is not None
+        assert question.id == "statistical_vs_practical"
+        assert question.category == QuestionCategory.INTERPRETATION
+
+    @pytest.mark.unit
+    def test_default_interpretation_questions(self):
+        """Default interpretation questions should be valid IDs."""
+        default_ids = get_default_interpretation_questions()
+        assert len(default_ids) == 5
+
+        for qid in default_ids:
+            question = get_question_by_id(qid)
+            assert question is not None, f"Invalid default interpretation question: {qid}"
+            assert qid in INTERPRETATION_QUESTIONS
+
+    @pytest.mark.unit
+    def test_select_interpretation_questions_default(self):
+        """Should select 5 interpretation questions by default."""
+        questions = select_interpretation_questions(seed=42)
+        assert len(questions) == 5
+
+    @pytest.mark.unit
+    def test_select_interpretation_questions_by_difficulty(self):
+        """Should filter interpretation questions by difficulty."""
+        questions = select_interpretation_questions(
+            count=10,
+            difficulty=QuestionDifficulty.MEDIUM,
+            seed=42
+        )
+        for q in questions:
+            assert q.difficulty == QuestionDifficulty.MEDIUM
+
+    @pytest.mark.unit
+    def test_select_interpretation_questions_reproducible(self):
+        """Same seed should produce same selection."""
+        q1 = select_interpretation_questions(count=3, seed=42)
+        q2 = select_interpretation_questions(count=3, seed=42)
+        assert [q.id for q in q1] == [q.id for q in q2]
+
+
+class TestAdvancedQuestionSelection:
+    """Test combined advanced question selection."""
+
+    @pytest.mark.unit
+    def test_select_advanced_questions_default(self):
+        """Should select mixed planning and interpretation questions."""
+        questions = select_advanced_questions(seed=42)
+        assert len(questions) == 6  # 3 planning + 3 interpretation
+
+    @pytest.mark.unit
+    def test_select_advanced_questions_custom_counts(self):
+        """Should respect custom counts for each category."""
+        questions = select_advanced_questions(
+            planning_count=2,
+            interpretation_count=4,
+            seed=42
+        )
+        assert len(questions) == 6
+
+        planning_count = sum(1 for q in questions if q.category == QuestionCategory.PLANNING)
+        interpretation_count = sum(1 for q in questions if q.category == QuestionCategory.INTERPRETATION)
+        assert planning_count == 2
+        assert interpretation_count == 4
+
+    @pytest.mark.unit
+    def test_select_advanced_questions_by_difficulty(self):
+        """Should filter by difficulty."""
+        questions = select_advanced_questions(
+            planning_count=5,
+            interpretation_count=5,
+            difficulty=QuestionDifficulty.HARD,
+            seed=42
+        )
+        for q in questions:
+            assert q.difficulty == QuestionDifficulty.HARD
+
+
+class TestQuestionPoolUtilities:
+    """Test utility functions for question pools."""
+
+    @pytest.mark.unit
+    def test_get_all_questions_includes_all_pools(self):
+        """Should return all questions from all four pools."""
+        all_questions = get_all_questions()
+        expected_count = (
+            len(DESIGN_QUESTIONS) +
+            len(ANALYSIS_QUESTIONS) +
+            len(PLANNING_QUESTIONS) +
+            len(INTERPRETATION_QUESTIONS)
+        )
+        assert len(all_questions) == expected_count
+
+        # Check that all pools are included
+        for qid in DESIGN_QUESTIONS:
+            assert qid in all_questions
+        for qid in ANALYSIS_QUESTIONS:
+            assert qid in all_questions
+        for qid in PLANNING_QUESTIONS:
+            assert qid in all_questions
+        for qid in INTERPRETATION_QUESTIONS:
+            assert qid in all_questions
+
+    @pytest.mark.unit
+    def test_get_questions_by_category(self):
+        """Should filter questions by category."""
+        planning = get_questions_by_category(QuestionCategory.PLANNING)
+        assert len(planning) == len(PLANNING_QUESTIONS)
+        for qid, q in planning.items():
+            assert q.category == QuestionCategory.PLANNING
+
+        interpretation = get_questions_by_category(QuestionCategory.INTERPRETATION)
+        assert len(interpretation) == len(INTERPRETATION_QUESTIONS)
+        for qid, q in interpretation.items():
+            assert q.category == QuestionCategory.INTERPRETATION
+
+    @pytest.mark.unit
+    def test_get_question_pool_summary(self):
+        """Should return correct counts for each pool."""
+        summary = get_question_pool_summary()
+
+        assert summary["design"] == len(DESIGN_QUESTIONS)
+        assert summary["analysis"] == len(ANALYSIS_QUESTIONS)
+        assert summary["planning"] == len(PLANNING_QUESTIONS)
+        assert summary["interpretation"] == len(INTERPRETATION_QUESTIONS)
+        assert summary["total"] == len(get_all_questions())
+
+    @pytest.mark.unit
+    def test_question_pool_summary_matches_all_questions(self):
+        """Summary total should match get_all_questions count."""
+        summary = get_question_pool_summary()
+        all_questions = get_all_questions()
+        assert summary["total"] == len(all_questions)
