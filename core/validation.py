@@ -3,13 +3,21 @@ Validation and scoring logic for AB test simulator.
 
 This module provides validation and scoring functions for quiz answers,
 ensuring consistent logic across all UI components.
+
+Supports both:
+1. Legacy question number-based validation (backward compatible)
+2. New question ID-based validation (from question_bank.py)
 """
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List, Union
 from dataclasses import dataclass
 
 from .types import SimResult, DesignParams
 from .design import compute_sample_size
+from .question_bank import (
+    Question, AnswerType, DESIGN_QUESTIONS, ANALYSIS_QUESTIONS,
+    get_question_by_id, get_default_design_questions, get_default_analysis_questions
+)
 
 
 @dataclass(frozen=True)
@@ -594,7 +602,7 @@ def score_analysis_answers(user_answers: Dict[str, Any],
     max_score = 7  # Updated for 7 questions
     percentage = (total_score / max_score) * 100 if max_score > 0 else 0
     grade = "A" if percentage >= 90 else "B" if percentage >= 80 else "C" if percentage >= 70 else "D" if percentage >= 60 else "F"
-    
+
     return ScoringResult(
         scores=scores,
         total_score=total_score,
@@ -602,3 +610,388 @@ def score_analysis_answers(user_answers: Dict[str, Any],
         percentage=percentage,
         grade=grade
     )
+
+
+# =============================================================================
+# NEW: QUESTION ID-BASED VALIDATION SYSTEM
+# =============================================================================
+
+def calculate_design_answer_by_id(
+    question_id: str,
+    design_params: DesignParams,
+    sample_size_result: Optional[Any] = None,
+    mde_absolute: Optional[float] = None
+) -> Tuple[Any, float]:
+    """
+    Calculate the correct answer for a design question by ID.
+
+    Args:
+        question_id: Question identifier from question_bank
+        design_params: Design parameters from scenario
+        sample_size_result: Sample size calculation result
+        mde_absolute: Pre-calculated MDE absolute value
+
+    Returns:
+        Tuple of (correct_answer, tolerance)
+    """
+    question = get_question_by_id(question_id)
+    if question is None:
+        raise ValueError(f"Unknown question ID: {question_id}")
+
+    baseline = design_params.baseline_conversion_rate
+    target_lift = design_params.target_lift_pct
+
+    if mde_absolute is None:
+        mde_absolute = baseline * target_lift
+
+    if sample_size_result is None:
+        sample_size_result = compute_sample_size(design_params)
+
+    # Calculate answer based on question ID
+    if question_id == "mde_absolute":
+        correct = mde_absolute * 100  # Convert to percentage points
+
+    elif question_id == "mde_relative":
+        correct = (mde_absolute / baseline) * 100  # Relative lift percentage
+
+    elif question_id == "mde_daily_impact":
+        correct = round(design_params.expected_daily_traffic * mde_absolute)
+
+    elif question_id == "target_conversion_rate":
+        correct = (baseline + mde_absolute) * 100  # Convert to percentage
+
+    elif question_id == "sample_size_per_arm":
+        correct = sample_size_result.per_arm
+
+    elif question_id == "sample_size_total":
+        correct = sample_size_result.per_arm * 2  # 50/50 allocation
+
+    elif question_id == "sample_size_with_allocation":
+        # Calculate control size with given allocation
+        allocation = getattr(design_params, 'allocation', {'control': 0.5, 'treatment': 0.5})
+        control_alloc = allocation.get('control', 0.5) if isinstance(allocation, dict) else 0.5
+        total_sample = sample_size_result.per_arm * 2
+        correct = round(total_sample * control_alloc)
+
+    elif question_id == "duration_days":
+        total_sample = sample_size_result.per_arm * 2
+        correct = max(1, round(total_sample / design_params.expected_daily_traffic))
+
+    elif question_id == "duration_weeks":
+        total_sample = sample_size_result.per_arm * 2
+        days = max(1, round(total_sample / design_params.expected_daily_traffic))
+        correct = round(days / 7, 1)
+
+    elif question_id == "power_tradeoff":
+        # What relative lift could you detect with 2 weeks of traffic?
+        # This is a reverse calculation - more complex
+        two_week_sample = design_params.expected_daily_traffic * 14
+        # Approximate: larger sample = smaller detectable effect
+        # For simplicity, estimate as: detectable_lift ∝ sqrt(original_sample / available_sample)
+        original_sample = sample_size_result.per_arm * 2
+        if two_week_sample < original_sample:
+            scale_factor = (original_sample / two_week_sample) ** 0.5
+            correct = (mde_absolute / baseline) * 100 * scale_factor
+        else:
+            correct = (mde_absolute / baseline) * 100  # Can detect original MDE
+
+    elif question_id == "sample_for_higher_power":
+        # Recalculate sample size with power=0.95
+        from .types import Allocation
+        high_power_params = DesignParams(
+            baseline_conversion_rate=design_params.baseline_conversion_rate,
+            target_lift_pct=design_params.target_lift_pct,
+            alpha=design_params.alpha,
+            power=0.95,
+            allocation=design_params.allocation,
+            expected_daily_traffic=design_params.expected_daily_traffic
+        )
+        high_power_result = compute_sample_size(high_power_params)
+        correct = high_power_result.per_arm
+
+    else:
+        raise ValueError(f"No calculation logic for design question: {question_id}")
+
+    return (correct, question.tolerance)
+
+
+def calculate_analysis_answer_by_id(
+    question_id: str,
+    sim_result: SimResult,
+    business_target_absolute: Optional[float] = None,
+    alpha: float = 0.05
+) -> Tuple[Any, float]:
+    """
+    Calculate the correct answer for an analysis question by ID.
+
+    Args:
+        question_id: Question identifier from question_bank
+        sim_result: Simulation results
+        business_target_absolute: Business target for rollout decision
+        alpha: Significance level
+
+    Returns:
+        Tuple of (correct_answer, tolerance)
+    """
+    question = get_question_by_id(question_id)
+    if question is None:
+        raise ValueError(f"Unknown question ID: {question_id}")
+
+    from .analyze import analyze_results, make_rollout_decision
+    analysis = analyze_results(sim_result, alpha=alpha)
+
+    if question_id == "control_rate":
+        correct = sim_result.control_rate * 100
+
+    elif question_id == "treatment_rate":
+        correct = sim_result.treatment_rate * 100
+
+    elif question_id == "pooled_rate":
+        total_conversions = sim_result.control_conversions + sim_result.treatment_conversions
+        total_users = sim_result.control_n + sim_result.treatment_n
+        correct = (total_conversions / total_users) * 100
+
+    elif question_id == "absolute_lift":
+        correct = sim_result.absolute_lift * 100
+
+    elif question_id == "relative_lift":
+        correct = sim_result.relative_lift_pct * 100
+
+    elif question_id == "lift_direction":
+        correct = "Yes" if sim_result.treatment_rate > sim_result.control_rate else "No"
+
+    elif question_id == "p_value":
+        correct = analysis.p_value
+
+    elif question_id == "is_significant":
+        correct = "Yes" if analysis.p_value < alpha else "No"
+
+    elif question_id == "confidence_interval":
+        ci_lower, ci_upper = analysis.confidence_interval
+        correct = (ci_lower * 100, ci_upper * 100)
+
+    elif question_id == "ci_includes_zero":
+        ci_lower, ci_upper = analysis.confidence_interval
+        correct = "Yes" if ci_lower <= 0 <= ci_upper else "No"
+
+    elif question_id == "rollout_decision":
+        if business_target_absolute is None:
+            raise ValueError("business_target_absolute required for rollout_decision")
+        decision = make_rollout_decision(sim_result, analysis, business_target_absolute)
+        correct = "Yes" if decision.lower() == "yes" else "No"
+
+    elif question_id == "practical_significance":
+        if business_target_absolute is None:
+            raise ValueError("business_target_absolute required for practical_significance")
+        correct = "Yes" if sim_result.absolute_lift >= business_target_absolute else "No"
+
+    elif question_id == "annual_impact":
+        daily_traffic = getattr(sim_result, 'daily_traffic', 1000)  # Default if not available
+        correct = round(daily_traffic * sim_result.absolute_lift * 365)
+
+    else:
+        raise ValueError(f"No calculation logic for analysis question: {question_id}")
+
+    return (correct, question.tolerance)
+
+
+def validate_answer_by_id(
+    question_id: str,
+    user_answer: Any,
+    design_params: Optional[DesignParams] = None,
+    sample_size_result: Optional[Any] = None,
+    sim_result: Optional[SimResult] = None,
+    mde_absolute: Optional[float] = None,
+    business_target_absolute: Optional[float] = None,
+    alpha: float = 0.05
+) -> ValidationResult:
+    """
+    Validate an answer using question ID from the question bank.
+
+    Args:
+        question_id: Question identifier from question_bank
+        user_answer: User's answer
+        design_params: Design parameters (for design questions)
+        sample_size_result: Sample size result (for design questions)
+        sim_result: Simulation results (for analysis questions)
+        mde_absolute: Pre-calculated MDE absolute value
+        business_target_absolute: Business target for decision questions
+        alpha: Significance level
+
+    Returns:
+        ValidationResult with correctness and feedback
+    """
+    question = get_question_by_id(question_id)
+    if question is None:
+        raise ValueError(f"Unknown question ID: {question_id}")
+
+    # Determine if this is a design or analysis question
+    if question_id in DESIGN_QUESTIONS:
+        if design_params is None:
+            raise ValueError("design_params required for design questions")
+        correct_answer, tolerance = calculate_design_answer_by_id(
+            question_id, design_params, sample_size_result, mde_absolute
+        )
+    else:
+        if sim_result is None:
+            raise ValueError("sim_result required for analysis questions")
+        correct_answer, tolerance = calculate_analysis_answer_by_id(
+            question_id, sim_result, business_target_absolute, alpha
+        )
+
+    # Validate based on answer type
+    if question.answer_type == AnswerType.BOOLEAN:
+        user_normalized = str(user_answer).lower().strip()
+        correct_normalized = str(correct_answer).lower().strip()
+        is_correct = user_normalized in ['yes', 'true', '1'] and correct_normalized in ['yes', 'true', '1'] or \
+                     user_normalized in ['no', 'false', '0'] and correct_normalized in ['no', 'false', '0']
+        feedback = f"Correct answer: {correct_answer}"
+
+    elif question.answer_type == AnswerType.RANGE:
+        # For confidence intervals (tuples)
+        if isinstance(user_answer, (tuple, list)) and len(user_answer) == 2:
+            is_correct = (abs(user_answer[0] - correct_answer[0]) <= tolerance and
+                         abs(user_answer[1] - correct_answer[1]) <= tolerance)
+        else:
+            is_correct = False
+        feedback = f"Correct answer: [{correct_answer[0]:.2f}, {correct_answer[1]:.2f}]"
+
+    elif question.answer_type in [AnswerType.NUMERIC, AnswerType.PERCENTAGE]:
+        try:
+            user_value = float(user_answer)
+            is_correct = abs(user_value - correct_answer) <= tolerance
+        except (ValueError, TypeError):
+            is_correct = False
+
+        if question.answer_type == AnswerType.PERCENTAGE:
+            feedback = f"Correct answer: {correct_answer:.2f}%"
+        else:
+            if isinstance(correct_answer, int) or correct_answer == int(correct_answer):
+                feedback = f"Correct answer: {int(correct_answer):,}"
+            else:
+                feedback = f"Correct answer: {correct_answer:.3f}"
+    else:
+        # Default: string comparison
+        is_correct = str(user_answer).lower().strip() == str(correct_answer).lower().strip()
+        feedback = f"Correct answer: {correct_answer}"
+
+    return ValidationResult(
+        is_correct=is_correct,
+        correct_answer=correct_answer,
+        feedback=feedback,
+        tolerance=tolerance
+    )
+
+
+def score_answers_by_id(
+    user_answers: Dict[str, Any],
+    question_ids: List[str],
+    design_params: Optional[DesignParams] = None,
+    sample_size_result: Optional[Any] = None,
+    sim_result: Optional[SimResult] = None,
+    mde_absolute: Optional[float] = None,
+    business_target_absolute: Optional[float] = None,
+    alpha: float = 0.05
+) -> ScoringResult:
+    """
+    Score a set of answers using question IDs.
+
+    Args:
+        user_answers: Dict mapping question_id to user's answer
+        question_ids: List of question IDs to score
+        design_params: Design parameters (for design questions)
+        sample_size_result: Sample size result (for design questions)
+        sim_result: Simulation results (for analysis questions)
+        mde_absolute: Pre-calculated MDE absolute value
+        business_target_absolute: Business target for decision questions
+        alpha: Significance level
+
+    Returns:
+        ScoringResult with scores and feedback
+    """
+    scores = {}
+    total_score = 0
+    max_score = len(question_ids)
+
+    for question_id in question_ids:
+        user_answer = user_answers.get(question_id)
+
+        if user_answer is None:
+            question = get_question_by_id(question_id)
+            # Calculate correct answer even for unanswered questions
+            try:
+                if question_id in DESIGN_QUESTIONS:
+                    correct, tolerance = calculate_design_answer_by_id(
+                        question_id, design_params, sample_size_result, mde_absolute
+                    )
+                else:
+                    correct, tolerance = calculate_analysis_answer_by_id(
+                        question_id, sim_result, business_target_absolute, alpha
+                    )
+            except Exception:
+                correct, tolerance = "N/A", 0
+
+            scores[question_id] = {
+                "correct": False,
+                "user": "No answer",
+                "correct_answer": correct,
+                "tolerance": tolerance
+            }
+            continue
+
+        try:
+            result = validate_answer_by_id(
+                question_id=question_id,
+                user_answer=user_answer,
+                design_params=design_params,
+                sample_size_result=sample_size_result,
+                sim_result=sim_result,
+                mde_absolute=mde_absolute,
+                business_target_absolute=business_target_absolute,
+                alpha=alpha
+            )
+
+            scores[question_id] = {
+                "correct": result.is_correct,
+                "user": user_answer,
+                "correct_answer": result.correct_answer,
+                "tolerance": result.tolerance
+            }
+
+            if result.is_correct:
+                total_score += 1
+
+        except Exception as e:
+            scores[question_id] = {
+                "correct": False,
+                "user": user_answer,
+                "correct_answer": f"Error: {str(e)}",
+                "tolerance": 0
+            }
+
+    percentage = (total_score / max_score) * 100 if max_score > 0 else 0
+    grade = "A" if percentage >= 90 else "B" if percentage >= 80 else "C" if percentage >= 70 else "D" if percentage >= 60 else "F"
+
+    return ScoringResult(
+        scores=scores,
+        total_score=total_score,
+        max_score=max_score,
+        percentage=percentage,
+        grade=grade
+    )
+
+
+def get_question_text(question_id: str) -> str:
+    """Get the question text for a question ID."""
+    question = get_question_by_id(question_id)
+    if question is None:
+        raise ValueError(f"Unknown question ID: {question_id}")
+    return question.text
+
+
+def get_question_hint(question_id: str) -> Optional[str]:
+    """Get the hint for a question ID."""
+    question = get_question_by_id(question_id)
+    if question is None:
+        return None
+    return question.hint

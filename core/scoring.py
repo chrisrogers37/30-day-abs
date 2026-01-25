@@ -3,13 +3,26 @@ Scoring and answer key generation for AB test simulator.
 
 This module provides comprehensive scoring functions and answer key generation
 for both design and analysis questions.
+
+Supports:
+1. Legacy fixed question sets (backward compatible)
+2. Variable question sets using question_bank IDs
 """
 
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
 from .types import SimResult, DesignParams
-from .validation import ValidationResult, ScoringResult, calculate_correct_design_answers, calculate_correct_analysis_answers
+from .validation import (
+    ValidationResult, ScoringResult,
+    calculate_correct_design_answers, calculate_correct_analysis_answers,
+    score_answers_by_id, calculate_design_answer_by_id, calculate_analysis_answer_by_id
+)
+from .question_bank import (
+    Question, DESIGN_QUESTIONS, ANALYSIS_QUESTIONS,
+    get_question_by_id, get_default_design_questions, get_default_analysis_questions,
+    select_design_questions, select_analysis_questions
+)
 
 
 @dataclass(frozen=True)
@@ -315,3 +328,275 @@ def export_quiz_results_to_csv(quiz_result: QuizResult, filename: str) -> None:
             'is_correct': 'N/A',
             'tolerance': 'N/A'
         })
+
+
+# =============================================================================
+# NEW: VARIABLE QUESTION SET SUPPORT
+# =============================================================================
+
+@dataclass(frozen=True)
+class VariableAnswerKey:
+    """Answer key for variable question sets (using question IDs)."""
+    question_type: str  # "design" or "analysis"
+    question_ids: List[str]
+    questions: List[Question]
+    correct_answers: Dict[str, Any]
+    max_score: int
+
+
+@dataclass(frozen=True)
+class VariableQuizResult:
+    """Complete quiz result with variable question sets."""
+    answer_key: VariableAnswerKey
+    scoring_result: ScoringResult
+    user_answers: Dict[str, Any]
+    feedback: List[str]
+
+
+def generate_variable_design_answer_key(
+    question_ids: List[str],
+    design_params: DesignParams,
+    sample_size_result: Any,
+    mde_absolute: Optional[float] = None
+) -> VariableAnswerKey:
+    """
+    Generate answer key for a variable set of design questions.
+
+    Args:
+        question_ids: List of question IDs from question_bank
+        design_params: Design parameters from scenario
+        sample_size_result: Sample size calculation result
+        mde_absolute: Pre-calculated MDE absolute value
+
+    Returns:
+        VariableAnswerKey with selected questions and correct answers
+    """
+    questions = []
+    correct_answers = {}
+
+    for qid in question_ids:
+        question = get_question_by_id(qid)
+        if question is None:
+            raise ValueError(f"Unknown question ID: {qid}")
+        questions.append(question)
+
+        try:
+            answer, _ = calculate_design_answer_by_id(
+                qid, design_params, sample_size_result, mde_absolute
+            )
+            correct_answers[qid] = answer
+        except Exception as e:
+            correct_answers[qid] = f"Error: {str(e)}"
+
+    return VariableAnswerKey(
+        question_type="design",
+        question_ids=question_ids,
+        questions=questions,
+        correct_answers=correct_answers,
+        max_score=len(question_ids)
+    )
+
+
+def generate_variable_analysis_answer_key(
+    question_ids: List[str],
+    sim_result: SimResult,
+    business_target_absolute: Optional[float] = None,
+    alpha: float = 0.05
+) -> VariableAnswerKey:
+    """
+    Generate answer key for a variable set of analysis questions.
+
+    Args:
+        question_ids: List of question IDs from question_bank
+        sim_result: Simulation results
+        business_target_absolute: Business target for rollout decision
+        alpha: Significance level
+
+    Returns:
+        VariableAnswerKey with selected questions and correct answers
+    """
+    questions = []
+    correct_answers = {}
+
+    for qid in question_ids:
+        question = get_question_by_id(qid)
+        if question is None:
+            raise ValueError(f"Unknown question ID: {qid}")
+        questions.append(question)
+
+        try:
+            answer, _ = calculate_analysis_answer_by_id(
+                qid, sim_result, business_target_absolute, alpha
+            )
+            correct_answers[qid] = answer
+        except Exception as e:
+            correct_answers[qid] = f"Error: {str(e)}"
+
+    return VariableAnswerKey(
+        question_type="analysis",
+        question_ids=question_ids,
+        questions=questions,
+        correct_answers=correct_answers,
+        max_score=len(question_ids)
+    )
+
+
+def generate_variable_quiz_feedback(
+    scoring_result: ScoringResult,
+    answer_key: VariableAnswerKey
+) -> List[str]:
+    """
+    Generate detailed feedback for variable quiz results.
+
+    Args:
+        scoring_result: Scoring results
+        answer_key: Variable answer key with questions
+
+    Returns:
+        List of feedback strings
+    """
+    feedback = []
+
+    # Overall performance
+    feedback.append(f"Overall Score: {scoring_result.total_score}/{scoring_result.max_score} ({scoring_result.percentage:.1f}%)")
+    feedback.append(f"Grade: {scoring_result.grade}")
+
+    # Detailed feedback for each question
+    for i, question in enumerate(answer_key.questions, 1):
+        qid = question.id
+        if qid in scoring_result.scores:
+            score_info = scoring_result.scores[qid]
+            if score_info["correct"]:
+                feedback.append(f"✅ Q{i} ({qid}): Correct! Your answer: {score_info['user']}")
+            else:
+                feedback.append(f"❌ Q{i} ({qid}): Incorrect. Your answer: {score_info['user']}, Correct: {score_info['correct_answer']}")
+
+            # Add hint if available
+            if question.hint and not score_info["correct"]:
+                feedback.append(f"   Hint: {question.hint}")
+        else:
+            feedback.append(f"⚠️ Q{i} ({qid}): No answer provided")
+
+    return feedback
+
+
+def create_variable_quiz_result(
+    user_answers: Dict[str, Any],
+    question_ids: List[str],
+    design_params: Optional[DesignParams] = None,
+    sample_size_result: Optional[Any] = None,
+    sim_result: Optional[SimResult] = None,
+    mde_absolute: Optional[float] = None,
+    business_target_absolute: Optional[float] = None,
+    alpha: float = 0.05
+) -> VariableQuizResult:
+    """
+    Create a complete variable quiz result with scoring and feedback.
+
+    Args:
+        user_answers: Dict mapping question_id to user's answer
+        question_ids: List of question IDs to score
+        design_params: Design parameters (for design questions)
+        sample_size_result: Sample size result (for design questions)
+        sim_result: Simulation results (for analysis questions)
+        mde_absolute: Pre-calculated MDE absolute value
+        business_target_absolute: Business target for decision questions
+        alpha: Significance level
+
+    Returns:
+        Complete VariableQuizResult with scoring and feedback
+    """
+    # Determine if this is design or analysis based on first question
+    first_qid = question_ids[0] if question_ids else None
+    is_design = first_qid in DESIGN_QUESTIONS if first_qid else False
+
+    if is_design:
+        if design_params is None or sample_size_result is None:
+            raise ValueError("design_params and sample_size_result required for design questions")
+        answer_key = generate_variable_design_answer_key(
+            question_ids, design_params, sample_size_result, mde_absolute
+        )
+    else:
+        if sim_result is None:
+            raise ValueError("sim_result required for analysis questions")
+        answer_key = generate_variable_analysis_answer_key(
+            question_ids, sim_result, business_target_absolute, alpha
+        )
+
+    # Score the answers
+    scoring_result = score_answers_by_id(
+        user_answers=user_answers,
+        question_ids=question_ids,
+        design_params=design_params,
+        sample_size_result=sample_size_result,
+        sim_result=sim_result,
+        mde_absolute=mde_absolute,
+        business_target_absolute=business_target_absolute,
+        alpha=alpha
+    )
+
+    # Generate feedback
+    feedback = generate_variable_quiz_feedback(scoring_result, answer_key)
+
+    return VariableQuizResult(
+        answer_key=answer_key,
+        scoring_result=scoring_result,
+        user_answers=user_answers,
+        feedback=feedback
+    )
+
+
+def select_and_create_design_quiz(
+    design_params: DesignParams,
+    sample_size_result: Any,
+    question_count: int = 6,
+    mde_absolute: Optional[float] = None,
+    seed: Optional[int] = None
+) -> VariableAnswerKey:
+    """
+    Select random design questions and create an answer key.
+
+    Args:
+        design_params: Design parameters from scenario
+        sample_size_result: Sample size calculation result
+        question_count: Number of questions to select
+        mde_absolute: Pre-calculated MDE absolute value
+        seed: Random seed for reproducibility
+
+    Returns:
+        VariableAnswerKey with randomly selected questions
+    """
+    questions = select_design_questions(count=question_count, seed=seed)
+    question_ids = [q.id for q in questions]
+
+    return generate_variable_design_answer_key(
+        question_ids, design_params, sample_size_result, mde_absolute
+    )
+
+
+def select_and_create_analysis_quiz(
+    sim_result: SimResult,
+    question_count: int = 7,
+    business_target_absolute: Optional[float] = None,
+    alpha: float = 0.05,
+    seed: Optional[int] = None
+) -> VariableAnswerKey:
+    """
+    Select random analysis questions and create an answer key.
+
+    Args:
+        sim_result: Simulation results
+        question_count: Number of questions to select
+        business_target_absolute: Business target for rollout decision
+        alpha: Significance level
+        seed: Random seed for reproducibility
+
+    Returns:
+        VariableAnswerKey with randomly selected questions
+    """
+    questions = select_analysis_questions(count=question_count, seed=seed)
+    question_ids = [q.id for q in questions]
+
+    return generate_variable_analysis_answer_key(
+        question_ids, sim_result, business_target_absolute, alpha
+    )

@@ -81,7 +81,9 @@ from dataclasses import dataclass
 
 from schemas.scenario import ScenarioResponseDTO
 from schemas.design import DesignParamsDTO
-from schemas.shared import CompanyType, UserSegment
+from schemas.shared import (
+    CompanyType, UserSegment, MetricType, EffectSizeProfile, TrafficTier
+)
 
 from core.logging import get_logger
 
@@ -208,41 +210,106 @@ class LLMGuardrails:
     def __init__(self):
         """
         Initialize the guardrails with parameter bounds and business rules.
-        
+
         Sets up the validation system with:
-        - Statistical parameter bounds for AB testing
-        - Business context validation rules
-        - Company type and user segment mappings
+        - Statistical parameter bounds for AB testing (expanded for variety)
+        - Metric-specific baseline ranges
+        - Traffic tier definitions
+        - Effect size profiles
         """
-        # Parameter bounds for statistical validation
+        # Parameter bounds for statistical validation - EXPANDED for variety
         self.bounds = {
-            'baseline_conversion_rate': (0.001, 0.5),  # 0.1% to 50%
-            'mde_absolute': (0.001, 0.1),  # 0.1% to 10% percentage points
-            'target_lift_pct': (-0.5, 0.5),  # -50% to +50%
-            'alpha': (0.01, 0.1),  # 1% to 10%
-            'power': (0.7, 0.95),  # 70% to 95%
-            'expected_daily_traffic': (500, 5000),  # 500 to 5,000 daily visitors
-            'treatment_conversion_rate': (0.001, 0.5),  # 0.1% to 50%
-            'control_conversion_rate': (0.001, 0.5)  # 0.1% to 50%
+            'baseline_conversion_rate': (0.001, 0.8),  # 0.1% to 80% (expanded)
+            'mde_absolute': (0.001, 0.2),  # 0.1% to 20% percentage points (expanded)
+            'target_lift_pct': (-0.5, 1.0),  # -50% to +100% (expanded for transformational)
+            'alpha': (0.001, 0.2),  # 0.1% to 20% (expanded)
+            'power': (0.5, 0.99),  # 50% to 99% (expanded)
+            'expected_daily_traffic': (100, 10_000_000),  # 100 to 10M daily (massively expanded)
+            'treatment_conversion_rate': (0.001, 0.8),  # 0.1% to 80%
+            'control_conversion_rate': (0.001, 0.8)  # 0.1% to 80%
         }
-        
-        # Business context validation rules
-        self.business_rules = {
-            'company_type_scenarios': {
-                CompanyType.ECOMMERCE: ['checkout', 'cart', 'payment', 'shipping', 'product'],
-                CompanyType.SAAS: ['onboarding', 'feature', 'pricing', 'trial', 'engagement'],
-                CompanyType.MEDIA: ['article', 'video', 'subscription', 'content', 'ad'],
-                CompanyType.FINTECH: ['account', 'payment', 'security', 'investment', 'loan'],
-                CompanyType.MARKETPLACE: ['listing', 'search', 'seller', 'buyer', 'transaction'],
-                CompanyType.GAMING: ['level', 'purchase', 'social', 'retention', 'monetization']
+
+        # Traffic tier definitions for different company stages
+        self.traffic_tiers = {
+            TrafficTier.EARLY_STAGE: (100, 1_000),
+            TrafficTier.GROWTH: (1_000, 10_000),
+            TrafficTier.SCALE: (10_000, 100_000),
+            TrafficTier.ENTERPRISE: (100_000, 10_000_000)
+        }
+
+        # Metric-specific baseline ranges for realistic scenarios
+        self.metric_baseline_ranges = {
+            # Conversion metrics - typically low
+            MetricType.CONVERSION_RATE: (0.001, 0.15),
+            MetricType.SIGNUP_RATE: (0.01, 0.40),
+            MetricType.ACTIVATION_RATE: (0.10, 0.80),
+            MetricType.PURCHASE_RATE: (0.005, 0.20),
+            MetricType.CHECKOUT_COMPLETION: (0.30, 0.85),
+            MetricType.FORM_COMPLETION: (0.10, 0.70),
+
+            # Engagement metrics - varies widely
+            MetricType.CLICK_THROUGH_RATE: (0.005, 0.30),
+            MetricType.ENGAGEMENT_RATE: (0.05, 0.60),
+            MetricType.FEATURE_ADOPTION: (0.01, 0.50),
+            MetricType.CONTENT_COMPLETION: (0.20, 0.80),
+            MetricType.VIDEO_COMPLETION: (0.15, 0.70),
+            MetricType.SHARE_RATE: (0.001, 0.10),
+
+            # Retention metrics - typically moderate to high
+            MetricType.DAY_1_RETENTION: (0.20, 0.70),
+            MetricType.DAY_7_RETENTION: (0.10, 0.50),
+            MetricType.DAY_30_RETENTION: (0.05, 0.35),
+            MetricType.WEEKLY_RETENTION: (0.30, 0.80),
+            MetricType.MONTHLY_RETENTION: (0.20, 0.70),
+            MetricType.CHURN_RATE: (0.01, 0.20),
+
+            # Quality metrics - typically low (errors) or moderate (bounce)
+            MetricType.ERROR_RATE: (0.001, 0.10),
+            MetricType.BOUNCE_RATE: (0.20, 0.70),
+            MetricType.SUPPORT_CONTACT_RATE: (0.01, 0.15),
+            MetricType.REFUND_RATE: (0.01, 0.10),
+            MetricType.NPS_PROMOTER_RATE: (0.20, 0.70),
+        }
+
+        # Effect size profiles for different experiment types
+        self.effect_size_profiles = {
+            EffectSizeProfile.INCREMENTAL: {
+                'relative_lift_range': (0.02, 0.10),  # 2-10% relative
+                'description': 'Mature product optimization - small iterative improvements'
             },
-            'user_segment_contexts': {
-                UserSegment.NEW_USERS: ['onboarding', 'first-time', 'trial', 'signup'],
-                UserSegment.RETURNING_USERS: ['engagement', 'retention', 'feature', 'upgrade'],
-                UserSegment.PREMIUM_USERS: ['advanced', 'premium', 'enterprise', 'pro'],
-                UserSegment.ALL_USERS: ['general', 'overall', 'site-wide', 'universal']
+            EffectSizeProfile.SIGNIFICANT: {
+                'relative_lift_range': (0.10, 0.30),  # 10-30% relative
+                'description': 'Major UX overhaul, new feature launch, significant changes'
+            },
+            EffectSizeProfile.TRANSFORMATIONAL: {
+                'relative_lift_range': (0.30, 1.00),  # 30-100% relative
+                'description': 'Completely new approach, radical redesign, high-risk test'
+            },
+            EffectSizeProfile.DEFENSIVE: {
+                'relative_lift_range': (-0.10, 0.05),  # -10% to +5%
+                'description': 'Proving no harm - cost reduction, infrastructure change'
             }
         }
+
+        # Alpha/power guidance based on business context
+        self.alpha_guidance = {
+            'high_stakes': 0.01,  # Irreversible changes, brand risk, regulatory
+            'standard': 0.05,  # Standard product decisions
+            'exploratory': 0.10,  # Easy rollback, low stakes
+            'very_exploratory': 0.15,  # Quick directional signal
+        }
+
+        self.power_guidance = {
+            'quick_signal': 0.60,  # Very limited resources, directional only
+            'exploratory': 0.70,  # Quick directional signal
+            'standard': 0.80,  # Balance of speed and confidence
+            'important': 0.90,  # High-value opportunity
+            'critical': 0.95,  # Must not miss true effect
+        }
+
+        # Note: Removed restrictive keyword validation rules
+        # The LLM is now free to generate creative, varied narratives
+        # without being constrained to specific keyword patterns
     
     def validate_scenario(self, scenario_response_dto: ScenarioResponseDTO) -> ValidationResult:
         """
@@ -346,44 +413,38 @@ class LLMGuardrails:
             )
     
     def _validate_business_context(self, scenario_response_dto: ScenarioResponseDTO, result: ValidationResult):
-        """Validate business context consistency."""
+        """
+        Validate business context consistency.
+
+        Note: Keyword validation has been removed to allow more creative,
+        varied scenario narratives. The LLM is now free to generate diverse
+        scenarios without being constrained to specific keyword patterns.
+        """
         scenario = scenario_response_dto.scenario
-        company_type = scenario.company_type
-        user_segment = scenario.user_segment
-        title = scenario.title.lower()
-        narrative = scenario.narrative.lower()
-        
-        # Check company type consistency
-        expected_keywords = self.business_rules['company_type_scenarios'].get(company_type, [])
-        if expected_keywords:
-            found_keywords = [kw for kw in expected_keywords if kw in title or kw in narrative]
-            if not found_keywords:
-                result.warnings.append(
-                    f"Scenario doesn't seem to match company type {company_type.value}. "
-                    f"Expected keywords: {expected_keywords}"
-                )
-        
-        # Check user segment consistency
-        segment_keywords = self.business_rules['user_segment_contexts'].get(user_segment, [])
-        if segment_keywords:
-            found_segment_keywords = [kw for kw in segment_keywords if kw in title or kw in narrative]
-            if not found_segment_keywords:
-                result.warnings.append(
-                    f"Scenario doesn't seem to match user segment {user_segment.value}. "
-                    f"Expected keywords: {segment_keywords}"
-                )
-        
-        # Check KPI consistency
+
+        # Basic validation - ensure required fields are present and non-empty
+        if not scenario.title or len(scenario.title.strip()) < 10:
+            result.warnings.append("Scenario title seems too short - consider more descriptive title")
+
+        if not scenario.narrative or len(scenario.narrative.strip()) < 50:
+            result.warnings.append("Scenario narrative seems too short - consider more detailed context")
+
+        # Check that company_type and user_segment are valid enum values
+        # (Pydantic should handle this, but double-check)
+        try:
+            _ = scenario.company_type.value
+        except (AttributeError, ValueError):
+            result.errors.append(f"Invalid company type: {scenario.company_type}")
+
+        try:
+            _ = scenario.user_segment.value
+        except (AttributeError, ValueError):
+            result.errors.append(f"Invalid user segment: {scenario.user_segment}")
+
+        # Light validation for primary KPI format
         primary_kpi = scenario.primary_kpi.lower()
-        if 'conversion' in primary_kpi and 'rate' not in primary_kpi:
-            result.warnings.append("Primary KPI should specify 'conversion_rate' for clarity")
-        
-        # Check unit consistency
-        unit = scenario.unit.lower()
-        if 'conversion' in primary_kpi and unit not in ['visitor', 'user', 'session']:
-            result.warnings.append(
-                f"Unit '{unit}' may not be appropriate for conversion rate measurement"
-            )
+        if not primary_kpi or len(primary_kpi) < 3:
+            result.warnings.append("Primary KPI should be clearly specified")
     
     def _validate_parameter_consistency(self, scenario_response_dto: ScenarioResponseDTO, result: ValidationResult):
         """Validate parameter consistency."""
@@ -457,44 +518,56 @@ class LLMGuardrails:
             )
     
     def _validate_realism(self, scenario_response_dto: ScenarioResponseDTO, result: ValidationResult):
-        """Validate realism of the scenario."""
+        """
+        Validate realism of the scenario with expanded, flexible bounds.
+
+        This validation is now much more permissive to allow diverse scenarios
+        across different company stages, industries, and experiment types.
+        """
         design_params = scenario_response_dto.design_params
-        scenario = scenario_response_dto.scenario
-        
-        # Check for unrealistic conversion rates
+
+        # Check conversion rates against expanded bounds only
         baseline = design_params.baseline_conversion_rate
-        if baseline > 0.2:  # 20%
+        if baseline > 0.8:  # 80% - truly extreme
             result.warnings.append(
-                f"Baseline conversion rate {baseline:.1%} seems high for most scenarios"
+                f"Baseline conversion rate {baseline:.1%} is very high - ensure this is realistic for the metric type"
             )
-        elif baseline < 0.005:  # 0.5%
+        elif baseline < 0.001:  # 0.1% - truly extreme
             result.warnings.append(
-                f"Baseline conversion rate {baseline:.1%} seems low for most scenarios"
+                f"Baseline conversion rate {baseline:.1%} is very low - ensure this is realistic for the metric type"
             )
-        
-        # Check for unrealistic target lifts
+
+        # Check target lift - only warn for truly extreme values
         target_lift = design_params.target_lift_pct
-        if abs(target_lift) > 1.0:  # 100%
+        if target_lift > 2.0:  # 200% relative lift
             result.warnings.append(
-                f"Target lift {target_lift:.1%} seems ambitious for most scenarios"
+                f"Target lift {target_lift:.1%} is very ambitious - consider if this is achievable"
             )
-        
-        # Check for unrealistic traffic
+        elif target_lift < -0.5:  # -50% relative lift
+            result.warnings.append(
+                f"Target lift {target_lift:.1%} suggests significant negative impact expected"
+            )
+
+        # Traffic validation is now informational, not restrictive
         traffic = design_params.expected_daily_traffic
-        if traffic > 1000000:  # 1M daily
+        if traffic > 10_000_000:  # 10M daily - truly massive
             result.warnings.append(
-                f"Daily traffic {traffic:,} seems very high for most scenarios"
+                f"Daily traffic {traffic:,} is enterprise-scale - ensure experiment can handle this volume"
             )
-        elif traffic < 5000:  # 5K daily
+        elif traffic < 100:  # Very small
             result.warnings.append(
-                f"Daily traffic {traffic:,} may be too low for meaningful AB testing"
+                f"Daily traffic {traffic:,} is very low - experiment duration may be very long"
             )
-        
-        # Check for unrealistic power
+
+        # Power validation - informational only
         power = design_params.power
-        if power > 0.9:  # 90%
-            result.warnings.append(
-                f"Power {power:.1%} is very high and may require large sample sizes"
+        if power > 0.95:
+            result.suggestions.append(
+                f"Power {power:.1%} is very high - consider if this precision is needed vs. faster iteration"
+            )
+        elif power < 0.6:
+            result.suggestions.append(
+                f"Power {power:.1%} is low - results may be directional only, higher risk of false negatives"
             )
     
     def clamp_parameters(self, scenario_response_dto: ScenarioResponseDTO) -> Tuple[ScenarioResponseDTO, Dict[str, Tuple[float, float]]]:
@@ -605,32 +678,367 @@ class LLMGuardrails:
     def get_quality_score(self, scenario_response_dto: ScenarioResponseDTO) -> float:
         """
         Calculate a quality score for the scenario (0-1).
-        
+
+        Quality is now assessed based on internal consistency and completeness,
+        not on narrow parameter ranges. Diverse scenarios are encouraged.
+
         Args:
             scenario_response_dto: Scenario to score
-            
+
         Returns:
             Quality score between 0 and 1
         """
         score = 1.0
-        
-        # Calculate quality without calling validate_scenario to avoid recursion
+
         design_params = scenario_response_dto.design_params
-        
-        # Deduct for unrealistic values
-        if design_params.baseline_conversion_rate > 0.2 or design_params.baseline_conversion_rate < 0.005:
-            score -= 0.1
-        
-        if abs(design_params.target_lift_pct) > 1.0:
-            score -= 0.1
-        
-        if design_params.expected_daily_traffic > 1000000 or design_params.expected_daily_traffic < 5000:
-            score -= 0.1
-        
-        # Deduct for inconsistency
+        scenario = scenario_response_dto.scenario
+
+        # Deduct for truly extreme/impossible values only
+        if design_params.baseline_conversion_rate > 0.95:  # Can't have >95% baseline
+            score -= 0.2
+        if design_params.baseline_conversion_rate < 0.0001:  # Too small to measure
+            score -= 0.2
+
+        # Deduct for impossible lifts
+        if design_params.target_lift_pct > 5.0:  # 500% lift is unrealistic
+            score -= 0.2
+        if design_params.target_lift_pct < -0.9:  # -90% would eliminate the metric
+            score -= 0.2
+
+        # Deduct for internal inconsistency between baseline and simulation hints
         baseline = design_params.baseline_conversion_rate
         control_rate = scenario_response_dto.llm_expected.simulation_hints.control_conversion_rate
-        if abs(baseline - control_rate) > 0.001:
+        if abs(baseline - control_rate) > 0.01:  # Allow 1% tolerance
             score -= 0.1
-        
+
+        # Bonus for rich narrative content
+        if len(scenario.narrative) > 200:
+            score += 0.05
+        if len(scenario.title) > 30:
+            score += 0.05
+
+        # Deduct for missing or minimal content
+        if len(scenario.narrative) < 50:
+            score -= 0.15
+        if len(scenario.title) < 10:
+            score -= 0.1
+
         return max(0.0, min(1.0, score))
+
+
+# =============================================================================
+# NOVELTY SCORING SYSTEM
+# =============================================================================
+
+class NoveltyScorer:
+    """
+    Scores how different a new scenario is from recently generated ones.
+
+    This helps prevent repetitive scenarios by tracking what types of scenarios
+    have been generated recently and penalizing similar combinations.
+
+    Features:
+        - Tracks recent scenarios by company type, segment, traffic tier, etc.
+        - Calculates novelty score (0-1) for new scenarios
+        - Provides suggestions for increasing diversity
+
+    Usage:
+        scorer = NoveltyScorer(history_size=20)
+        novelty = scorer.score_novelty(new_scenario)
+        if novelty < 0.5:
+            print("Consider a different company type or segment")
+        scorer.record_scenario(new_scenario)  # Add to history after generation
+    """
+
+    def __init__(self, history_size: int = 20):
+        """
+        Initialize the novelty scorer.
+
+        Args:
+            history_size: Number of recent scenarios to track for comparison
+        """
+        self.history_size = history_size
+        self.recent_scenarios: List[Dict] = []
+
+    def _extract_features(self, scenario_dto: ScenarioResponseDTO) -> Dict:
+        """Extract features from a scenario for comparison."""
+        scenario = scenario_dto.scenario
+        design_params = scenario_dto.design_params
+
+        # Determine traffic tier
+        traffic = design_params.expected_daily_traffic
+        if traffic < 1000:
+            traffic_tier = "early_stage"
+        elif traffic < 10000:
+            traffic_tier = "growth"
+        elif traffic < 100000:
+            traffic_tier = "scale"
+        else:
+            traffic_tier = "enterprise"
+
+        # Determine baseline tier
+        baseline = design_params.baseline_conversion_rate
+        if baseline < 0.01:
+            baseline_tier = "very_low"
+        elif baseline < 0.05:
+            baseline_tier = "low"
+        elif baseline < 0.15:
+            baseline_tier = "medium"
+        elif baseline < 0.30:
+            baseline_tier = "high"
+        else:
+            baseline_tier = "very_high"
+
+        # Determine effect size tier
+        lift = design_params.target_lift_pct
+        if lift < 0.05:
+            effect_tier = "incremental"
+        elif lift < 0.20:
+            effect_tier = "moderate"
+        elif lift < 0.50:
+            effect_tier = "significant"
+        else:
+            effect_tier = "transformational"
+
+        return {
+            "company_type": scenario.company_type.value if hasattr(scenario.company_type, 'value') else str(scenario.company_type),
+            "user_segment": scenario.user_segment.value if hasattr(scenario.user_segment, 'value') else str(scenario.user_segment),
+            "primary_kpi": scenario.primary_kpi,
+            "traffic_tier": traffic_tier,
+            "baseline_tier": baseline_tier,
+            "effect_tier": effect_tier,
+            "alpha": design_params.alpha,
+            "power": design_params.power,
+        }
+
+    def score_novelty(self, scenario_dto: ScenarioResponseDTO) -> float:
+        """
+        Calculate a novelty score for a scenario compared to recent history.
+
+        Args:
+            scenario_dto: The scenario to score
+
+        Returns:
+            Novelty score from 0 (highly repetitive) to 1 (highly novel)
+        """
+        if not self.recent_scenarios:
+            return 1.0  # First scenario is always novel
+
+        new_features = self._extract_features(scenario_dto)
+
+        # Calculate similarity to each recent scenario
+        total_similarity = 0.0
+
+        for recent in self.recent_scenarios:
+            similarity = 0.0
+
+            # Same company type: high penalty
+            if new_features["company_type"] == recent["company_type"]:
+                similarity += 0.25
+
+            # Same user segment: moderate penalty
+            if new_features["user_segment"] == recent["user_segment"]:
+                similarity += 0.15
+
+            # Same KPI: moderate penalty
+            if new_features["primary_kpi"] == recent["primary_kpi"]:
+                similarity += 0.10
+
+            # Same traffic tier: low penalty
+            if new_features["traffic_tier"] == recent["traffic_tier"]:
+                similarity += 0.10
+
+            # Same baseline tier: low penalty
+            if new_features["baseline_tier"] == recent["baseline_tier"]:
+                similarity += 0.10
+
+            # Same effect tier: low penalty
+            if new_features["effect_tier"] == recent["effect_tier"]:
+                similarity += 0.10
+
+            # Similar alpha (same band)
+            if new_features["alpha"] == recent["alpha"]:
+                similarity += 0.10
+
+            # Similar power (same band)
+            if new_features["power"] == recent["power"]:
+                similarity += 0.10
+
+            total_similarity += similarity
+
+        # Average similarity across recent scenarios
+        avg_similarity = total_similarity / len(self.recent_scenarios)
+
+        # Weight more recent scenarios higher
+        recency_weighted_similarity = 0.0
+        for i, recent in enumerate(self.recent_scenarios):
+            recency_weight = (i + 1) / len(self.recent_scenarios)  # More recent = higher weight
+
+            similarity = 0.0
+            if new_features["company_type"] == recent["company_type"]:
+                similarity += 0.25
+            if new_features["user_segment"] == recent["user_segment"]:
+                similarity += 0.15
+            if new_features["primary_kpi"] == recent["primary_kpi"]:
+                similarity += 0.10
+
+            recency_weighted_similarity += similarity * recency_weight
+
+        # Combine average and recency-weighted similarity
+        combined_similarity = (avg_similarity + recency_weighted_similarity) / 2
+
+        # Convert to novelty score
+        novelty = max(0.0, 1.0 - combined_similarity)
+
+        return novelty
+
+    def record_scenario(self, scenario_dto: ScenarioResponseDTO) -> None:
+        """
+        Record a scenario in the history for future novelty comparisons.
+
+        Args:
+            scenario_dto: The scenario to record
+        """
+        features = self._extract_features(scenario_dto)
+        self.recent_scenarios.append(features)
+
+        # Maintain history size
+        if len(self.recent_scenarios) > self.history_size:
+            self.recent_scenarios = self.recent_scenarios[-self.history_size:]
+
+    def get_diversity_suggestions(self, scenario_dto: ScenarioResponseDTO) -> List[str]:
+        """
+        Get suggestions for making a scenario more novel.
+
+        Args:
+            scenario_dto: The scenario to analyze
+
+        Returns:
+            List of suggestions for increasing diversity
+        """
+        if not self.recent_scenarios:
+            return []
+
+        new_features = self._extract_features(scenario_dto)
+        suggestions = []
+
+        # Count occurrences of each feature in history
+        company_counts = {}
+        segment_counts = {}
+        kpi_counts = {}
+        traffic_counts = {}
+
+        for recent in self.recent_scenarios:
+            company_counts[recent["company_type"]] = company_counts.get(recent["company_type"], 0) + 1
+            segment_counts[recent["user_segment"]] = segment_counts.get(recent["user_segment"], 0) + 1
+            kpi_counts[recent["primary_kpi"]] = kpi_counts.get(recent["primary_kpi"], 0) + 1
+            traffic_counts[recent["traffic_tier"]] = traffic_counts.get(recent["traffic_tier"], 0) + 1
+
+        # Suggest alternatives for overused features
+        if company_counts.get(new_features["company_type"], 0) >= 3:
+            underused = [ct for ct in ["Telehealth", "EdTech", "PropTech", "Gaming", "Logistics"]
+                        if company_counts.get(ct, 0) == 0]
+            if underused:
+                suggestions.append(f"Company type '{new_features['company_type']}' used frequently. Consider: {', '.join(underused[:3])}")
+
+        if segment_counts.get(new_features["user_segment"], 0) >= 3:
+            underused = [seg for seg in ["power users (top 10%)", "churned users (win-back)", "enterprise accounts"]
+                        if segment_counts.get(seg, 0) == 0]
+            if underused:
+                suggestions.append(f"User segment used frequently. Consider: {', '.join(underused[:3])}")
+
+        if traffic_counts.get(new_features["traffic_tier"], 0) >= 4:
+            underused = [tier for tier in ["early_stage", "enterprise"]
+                        if traffic_counts.get(tier, 0) <= 1]
+            if underused:
+                suggestions.append(f"Traffic tier '{new_features['traffic_tier']}' common. Consider: {', '.join(underused)}")
+
+        return suggestions
+
+    def get_history_summary(self) -> Dict:
+        """
+        Get a summary of the scenario history for diversity analysis.
+
+        Returns:
+            Dictionary with counts of each feature value
+        """
+        if not self.recent_scenarios:
+            return {"total": 0}
+
+        summary = {
+            "total": len(self.recent_scenarios),
+            "company_types": {},
+            "user_segments": {},
+            "kpis": {},
+            "traffic_tiers": {},
+            "effect_tiers": {}
+        }
+
+        # Map feature keys to summary keys
+        key_mapping = {
+            "company_type": "company_types",
+            "user_segment": "user_segments",
+            "primary_kpi": "kpis",
+            "traffic_tier": "traffic_tiers",
+            "effect_tier": "effect_tiers"
+        }
+
+        for scenario in self.recent_scenarios:
+            for feature_key, summary_key in key_mapping.items():
+                value = scenario.get(feature_key, "unknown")
+                summary[summary_key][value] = summary[summary_key].get(value, 0) + 1
+
+        return summary
+
+    def clear_history(self) -> None:
+        """Clear the scenario history."""
+        self.recent_scenarios = []
+
+
+# Global novelty scorer instance for use across the application
+_novelty_scorer: Optional[NoveltyScorer] = None
+
+
+def get_novelty_scorer(history_size: int = 20) -> NoveltyScorer:
+    """
+    Get the global novelty scorer instance (singleton pattern).
+
+    Args:
+        history_size: Number of recent scenarios to track
+
+    Returns:
+        The global NoveltyScorer instance
+    """
+    global _novelty_scorer
+    if _novelty_scorer is None:
+        _novelty_scorer = NoveltyScorer(history_size=history_size)
+    return _novelty_scorer
+
+
+def score_scenario_novelty(scenario_dto: ScenarioResponseDTO) -> Tuple[float, List[str]]:
+    """
+    Convenience function to score novelty and get suggestions.
+
+    Args:
+        scenario_dto: The scenario to score
+
+    Returns:
+        Tuple of (novelty_score, list_of_suggestions)
+    """
+    scorer = get_novelty_scorer()
+    novelty = scorer.score_novelty(scenario_dto)
+    suggestions = scorer.get_diversity_suggestions(scenario_dto)
+    return novelty, suggestions
+
+
+def record_generated_scenario(scenario_dto: ScenarioResponseDTO) -> None:
+    """
+    Record a generated scenario in the novelty history.
+
+    Call this after successfully generating a scenario to update the history.
+
+    Args:
+        scenario_dto: The scenario to record
+    """
+    scorer = get_novelty_scorer()
+    scorer.record_scenario(scenario_dto)

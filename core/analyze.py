@@ -8,33 +8,137 @@ and generates detailed answer keys for user evaluation.
 import math
 from typing import Dict, Tuple, Optional
 
-from .types import SimResult, AnalysisResult, BusinessImpact, TestQuality, DesignParams
+from .types import SimResult, AnalysisResult, BusinessImpact, TestQuality, DesignParams, StatisticalTestSelection
 from .design import _get_z_score
 
 
-def analyze_results(sim_result: SimResult, alpha: float = 0.05, 
-                   test_type: str = "two_proportion_z",
+def select_statistical_test(sim_result: SimResult) -> StatisticalTestSelection:
+    """
+    Automatically select the most appropriate statistical test based on sample characteristics.
+
+    Selection criteria:
+    - Fisher's exact test: When any expected cell count < 5 (small sample rule)
+    - Chi-square test: When sample size >= 5 per cell but < 30 per group
+    - Two-proportion z-test: When sample size >= 30 per group (normal approximation valid)
+
+    Args:
+        sim_result: Simulation results with conversion counts
+
+    Returns:
+        StatisticalTestSelection with recommended test type and reasoning
+    """
+    n1, x1 = sim_result.control_n, sim_result.control_conversions
+    n2, x2 = sim_result.treatment_n, sim_result.treatment_conversions
+
+    total_n = n1 + n2
+    total_conversions = x1 + x2
+    total_non_conversions = total_n - total_conversions
+
+    # Calculate expected cell counts for the 2x2 contingency table
+    # Expected = (row_total * column_total) / grand_total
+    expected_cells = []
+    if total_n > 0:
+        expected_cells = [
+            total_conversions * n1 / total_n,      # Control conversions
+            total_non_conversions * n1 / total_n,  # Control non-conversions
+            total_conversions * n2 / total_n,      # Treatment conversions
+            total_non_conversions * n2 / total_n   # Treatment non-conversions
+        ]
+
+    min_expected = min(expected_cells) if expected_cells else 0
+    min_sample = min(n1, n2)
+
+    # Decision logic
+    if min_expected < 5:
+        return StatisticalTestSelection(
+            test_type="fisher_exact",
+            reasoning="Fisher's exact test selected: One or more expected cell counts are below 5, "
+                     f"which violates chi-square assumptions (min expected: {min_expected:.1f}). "
+                     "Fisher's exact test provides accurate p-values for small samples.",
+            sample_size_adequate=min_sample >= 10,
+            assumptions_met=True,  # Fisher's exact has no distributional assumptions
+            alternative_tests=["chi_square", "two_proportion_z"],
+            min_expected_cell_count=min_expected
+        )
+    elif min_sample < 30:
+        return StatisticalTestSelection(
+            test_type="chi_square",
+            reasoning="Chi-square test selected: Sample sizes are adequate for chi-square "
+                     f"(all expected cells >= 5, min: {min_expected:.1f}), but groups are too small "
+                     f"for reliable normal approximation (min group size: {min_sample}). "
+                     "Chi-square test is appropriate for this intermediate sample size.",
+            sample_size_adequate=True,
+            assumptions_met=min_expected >= 5,
+            alternative_tests=["fisher_exact", "two_proportion_z"],
+            min_expected_cell_count=min_expected
+        )
+    else:
+        # Large sample - z-test is appropriate
+        # Check additional z-test assumptions
+        p1 = x1 / n1 if n1 > 0 else 0
+        p2 = x2 / n2 if n2 > 0 else 0
+
+        # Rule of thumb: np >= 5 and n(1-p) >= 5 for normal approximation
+        np_checks = [
+            n1 * p1 >= 5,
+            n1 * (1 - p1) >= 5,
+            n2 * p2 >= 5,
+            n2 * (1 - p2) >= 5
+        ]
+        assumptions_met = all(np_checks)
+
+        return StatisticalTestSelection(
+            test_type="two_proportion_z",
+            reasoning="Two-proportion z-test selected: Both groups have adequate sample sizes "
+                     f"(control: {n1}, treatment: {n2}) and expected cell counts "
+                     f"(min: {min_expected:.1f}) for reliable normal approximation. "
+                     "This is the standard test for comparing proportions with large samples.",
+            sample_size_adequate=True,
+            assumptions_met=assumptions_met,
+            alternative_tests=["chi_square"],
+            min_expected_cell_count=min_expected
+        )
+
+
+def analyze_results(sim_result: SimResult, alpha: float = 0.05,
+                   test_type: str = "auto",
                    test_direction: str = "two_tailed") -> AnalysisResult:
     """
     Perform comprehensive statistical analysis on simulation results.
-    
+
     Args:
         sim_result: Simulation results with conversion counts
         alpha: Significance level
-        test_type: Type of statistical test to perform
+        test_type: Type of statistical test to perform ("auto" for automatic selection,
+                  or "two_proportion_z", "chi_square", "fisher_exact")
         test_direction: One-tailed or two-tailed test
-        
+
     Returns:
-        AnalysisResult with test statistics, p-value, CI, and recommendation
+        AnalysisResult with test statistics, p-value, CI, recommendation, and test selection info
     """
-    if test_type == "two_proportion_z":
-        return _two_proportion_z_test(sim_result, alpha, test_direction)
-    elif test_type == "chi_square":
-        return _chi_square_test(sim_result, alpha)
-    elif test_type == "fisher_exact":
-        return _fisher_exact_test(sim_result, alpha)
+    # Automatic test selection
+    test_selection = None
+    if test_type == "auto":
+        test_selection = select_statistical_test(sim_result)
+        actual_test_type = test_selection.test_type
     else:
-        raise ValueError(f"Unsupported test type: {test_type}")
+        actual_test_type = test_type
+
+    # Perform the selected test
+    if actual_test_type == "two_proportion_z":
+        result = _two_proportion_z_test(sim_result, alpha, test_direction)
+    elif actual_test_type == "chi_square":
+        result = _chi_square_test(sim_result, alpha)
+    elif actual_test_type == "fisher_exact":
+        result = _fisher_exact_test(sim_result, alpha)
+    else:
+        raise ValueError(f"Unsupported test type: {actual_test_type}")
+
+    # Add test selection info to result
+    result.test_type_used = actual_test_type
+    result.test_selection = test_selection
+
+    return result
 
 
 def _two_proportion_z_test(sim_result: SimResult, alpha: float, 

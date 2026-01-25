@@ -41,6 +41,15 @@ from core.design import compute_sample_size
 from core.types import DesignParams, Allocation
 from core.validation import validate_design_answer, validate_analysis_answer, score_design_answers, score_analysis_answers
 from core.scoring import generate_design_answer_key, generate_analysis_answer_key, create_complete_quiz_result
+from core.question_bank import (
+    Question, QuestionCategory, QuestionDifficulty, AnswerType,
+    DESIGN_QUESTIONS, ANALYSIS_QUESTIONS, PLANNING_QUESTIONS, INTERPRETATION_QUESTIONS,
+    get_question_by_id, get_all_questions, get_question_pool_summary,
+    get_default_design_questions, get_default_analysis_questions,
+    get_default_planning_questions, get_default_interpretation_questions,
+    select_design_questions, select_analysis_questions,
+    select_planning_questions, select_interpretation_questions
+)
 from schemas.scenario import ScenarioResponseDTO
 
 # Page configuration
@@ -127,6 +136,26 @@ def initialize_session_state():
         st.session_state.design_answers = {}  # Store answers as we go
     if 'quiz_logger' not in st.session_state:
         st.session_state.quiz_logger = None  # Quiz session logger
+
+    # Question bank settings
+    if 'question_difficulty' not in st.session_state:
+        st.session_state.question_difficulty = "MIXED"  # EASY, MEDIUM, HARD, or MIXED
+    if 'selected_design_questions' not in st.session_state:
+        st.session_state.selected_design_questions = get_default_design_questions()
+    if 'selected_analysis_questions' not in st.session_state:
+        st.session_state.selected_analysis_questions = get_default_analysis_questions()
+    if 'include_planning_questions' not in st.session_state:
+        st.session_state.include_planning_questions = False
+    if 'include_interpretation_questions' not in st.session_state:
+        st.session_state.include_interpretation_questions = False
+    if 'selected_planning_questions' not in st.session_state:
+        st.session_state.selected_planning_questions = []
+    if 'selected_interpretation_questions' not in st.session_state:
+        st.session_state.selected_interpretation_questions = []
+    if 'planning_answers' not in st.session_state:
+        st.session_state.planning_answers = {}
+    if 'interpretation_answers' not in st.session_state:
+        st.session_state.interpretation_answers = {}
 
 def generate_scenario():
     """Generate a new A/B test scenario."""
@@ -283,36 +312,60 @@ def display_scenario(scenario_dto):
 def display_simulation_results(sim_result, analysis):
     """Display simulation results."""
     st.markdown("### 📊 Simulation Results")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("**Control Group:**")
         st.metric("Users", f"{sim_result.control_n:,}")
         st.metric("Conversions", f"{sim_result.control_conversions:,}")
         st.metric("Conversion Rate", f"{sim_result.control_rate:.1%}")
-    
+
     with col2:
         st.markdown("**Treatment Group:**")
         st.metric("Users", f"{sim_result.treatment_n:,}")
         st.metric("Conversions", f"{sim_result.treatment_conversions:,}")
         st.metric("Conversion Rate", f"{sim_result.treatment_rate:.1%}")
-    
+
     st.markdown("### 📈 Analysis Results")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         st.metric("P-value", f"{analysis.p_value:.6f}")
         st.metric("Significant", "✅ Yes" if analysis.significant else "❌ No")
-    
+
     with col2:
         st.metric("Absolute Lift", f"{sim_result.absolute_lift:.1%}")
         st.metric("Relative Lift", f"{sim_result.relative_lift_pct:.1%}")
-    
+
     with col3:
         st.metric("Effect Size", f"{analysis.effect_size:.3f}")
         st.metric("Power Achieved", f"{analysis.power_achieved:.1%}")
+
+    # Display test selection information if available
+    if analysis.test_type_used:
+        test_names = {
+            "two_proportion_z": "Two-Proportion Z-Test",
+            "chi_square": "Chi-Square Test",
+            "fisher_exact": "Fisher's Exact Test"
+        }
+        test_display_name = test_names.get(analysis.test_type_used, analysis.test_type_used)
+
+        with st.expander("🔬 Statistical Test Selection", expanded=False):
+            st.markdown(f"**Test Used:** {test_display_name}")
+
+            if analysis.test_selection:
+                st.markdown("**Reasoning:**")
+                st.info(analysis.test_selection.reasoning)
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Min Expected Cell Count:** {analysis.test_selection.min_expected_cell_count:.1f}")
+                    st.markdown(f"**Sample Size Adequate:** {'✅ Yes' if analysis.test_selection.sample_size_adequate else '❌ No'}")
+                with col2:
+                    st.markdown(f"**Assumptions Met:** {'✅ Yes' if analysis.test_selection.assumptions_met else '⚠️ No'}")
+                    st.markdown(f"**Alternative Tests:** {', '.join(analysis.test_selection.alternative_tests)}")
 
 def create_notebook_download():
     """Create Jupyter notebook download button."""
@@ -409,6 +462,59 @@ def validate_analysis_question_answer(question_num, user_answer):
     # Use core validation
     validation_result = validate_analysis_answer(question_num, user_answer, sim_result, business_target_absolute)
     return validation_result.is_correct, validation_result.feedback
+
+def get_question_display_info(question_id: str) -> dict:
+    """Get display information for a question from the question bank."""
+    question = get_question_by_id(question_id)
+    if not question:
+        return None
+    return {
+        "id": question.id,
+        "text": question.text,
+        "hint": question.hint,
+        "category": question.category,
+        "difficulty": question.difficulty,
+        "answer_type": question.answer_type,
+        "tolerance": question.tolerance,
+        "skills_tested": question.skills_tested,
+        "explanation_template": question.explanation_template
+    }
+
+
+def display_question_from_bank(question_id: str, question_num: int, total_questions: int, answer_key: str, phase: str = "design"):
+    """
+    Display a question from the question bank with appropriate input widget.
+
+    Args:
+        question_id: The ID of the question to display
+        question_num: The current question number (1-indexed)
+        total_questions: Total number of questions in this phase
+        answer_key: Key to store the answer in session state
+        phase: The phase (design, analysis, planning, interpretation)
+    """
+    question = get_question_by_id(question_id)
+    if not question:
+        st.error(f"Question '{question_id}' not found in question bank")
+        return
+
+    # Display question header with difficulty badge
+    difficulty_colors = {
+        QuestionDifficulty.EASY: "🟢",
+        QuestionDifficulty.MEDIUM: "🟡",
+        QuestionDifficulty.HARD: "🔴"
+    }
+    difficulty_badge = difficulty_colors.get(question.difficulty, "⚪")
+
+    st.markdown(f"**Question {question_num} of {total_questions}** {difficulty_badge}")
+    st.markdown(f"**{question.text}**")
+
+    # Display hint if available
+    if question.hint:
+        st.markdown(f"*💡 Hint: {question.hint}*")
+
+    # Return just the question info - actual input widgets handled by existing functions
+    return question
+
 
 def ask_single_design_question(question_num):
     """Ask a single design question based on question number."""
@@ -1032,6 +1138,37 @@ def main():
                 st.session_state.analysis_answers = {}
                 st.session_state.analysis_scoring_results = None
                 st.session_state.current_step = "scenario"
+
+                # Select questions based on difficulty setting
+                difficulty_filter = None
+                if st.session_state.question_difficulty != "MIXED":
+                    difficulty_filter = QuestionDifficulty[st.session_state.question_difficulty]
+
+                # Select design and analysis questions
+                st.session_state.selected_design_questions = [
+                    q.id for q in select_design_questions(count=6, difficulty=difficulty_filter)
+                ]
+                st.session_state.selected_analysis_questions = [
+                    q.id for q in select_analysis_questions(count=7, difficulty=difficulty_filter)
+                ]
+
+                # Select planning questions if enabled
+                if st.session_state.include_planning_questions:
+                    st.session_state.selected_planning_questions = [
+                        q.id for q in select_planning_questions(count=3, difficulty=difficulty_filter)
+                    ]
+                    st.session_state.planning_answers = {}
+                else:
+                    st.session_state.selected_planning_questions = []
+
+                # Select interpretation questions if enabled
+                if st.session_state.include_interpretation_questions:
+                    st.session_state.selected_interpretation_questions = [
+                        q.id for q in select_interpretation_questions(count=3, difficulty=difficulty_filter)
+                    ]
+                    st.session_state.interpretation_answers = {}
+                else:
+                    st.session_state.selected_interpretation_questions = []
                 
                 # Run simulation and analysis immediately after scenario generation
                 sim_result, analysis_result, sample_size_result = run_simulation(st.session_state.scenario_data)
@@ -1078,6 +1215,42 @@ def main():
                     }
                     st.session_state.quiz_logger.log_analysis_results(analysis_dict)
         
+        # Question Settings Expander
+        with st.expander("⚙️ Question Settings", expanded=False):
+            # Difficulty selector
+            difficulty_options = ["MIXED", "EASY", "MEDIUM", "HARD"]
+            selected_difficulty = st.selectbox(
+                "Difficulty Level",
+                difficulty_options,
+                index=difficulty_options.index(st.session_state.question_difficulty),
+                help="MIXED includes questions of all difficulties"
+            )
+            if selected_difficulty != st.session_state.question_difficulty:
+                st.session_state.question_difficulty = selected_difficulty
+
+            # Advanced question phases
+            st.markdown("**Advanced Phases:**")
+            include_planning = st.checkbox(
+                "Include Planning Questions",
+                value=st.session_state.include_planning_questions,
+                help="Add hypothesis formulation and experimental design questions"
+            )
+            if include_planning != st.session_state.include_planning_questions:
+                st.session_state.include_planning_questions = include_planning
+
+            include_interpretation = st.checkbox(
+                "Include Interpretation Questions",
+                value=st.session_state.include_interpretation_questions,
+                help="Add business recommendation and follow-up questions"
+            )
+            if include_interpretation != st.session_state.include_interpretation_questions:
+                st.session_state.include_interpretation_questions = include_interpretation
+
+            # Show question pool summary
+            summary = get_question_pool_summary()
+            st.markdown(f"**Question Pool:** {summary['total']} questions")
+            st.caption(f"Design: {summary['design']} | Analysis: {summary['analysis']} | Planning: {summary['planning']} | Interpretation: {summary['interpretation']}")
+
         st.markdown("### 📊 Session Progress")
         if st.session_state.scenario_data:
             st.success("✅ Scenario loaded")
@@ -1096,12 +1269,20 @@ def main():
         st.markdown("### 🎯 Current Step")
         step_colors = {
             "scenario": "🔵",
+            "planning": "🟠",
             "design": "🟡",
-            "data_download": "🟢", 
-            "analysis": "🟣"
+            "data_download": "🟢",
+            "analysis": "🟣",
+            "interpretation": "🟤"
         }
         current_step = st.session_state.current_step
         st.info(f"{step_colors.get(current_step, '⚪')} {current_step.replace('_', ' ').title()}")
+
+        # Show enabled phases
+        if st.session_state.include_planning_questions:
+            st.caption("🟠 Planning phase enabled")
+        if st.session_state.include_interpretation_questions:
+            st.caption("🟤 Interpretation phase enabled")
         
         # Show scenario specs if available
         if st.session_state.scenario_data:
@@ -1334,11 +1515,54 @@ def main():
     # Step 1: Display scenario
     if st.session_state.current_step == "scenario":
         display_scenario(st.session_state.scenario_data)
-        
-        if st.button("➡️ Next: Design the Experiment", type="primary"):
-            st.session_state.current_step = "design"
-            st.rerun()
-    
+
+        # Show next step based on whether planning questions are enabled
+        if st.session_state.include_planning_questions and st.session_state.selected_planning_questions:
+            if st.button("➡️ Next: Planning Questions", type="primary"):
+                st.session_state.current_step = "planning"
+                st.rerun()
+        else:
+            if st.button("➡️ Next: Design the Experiment", type="primary"):
+                st.session_state.current_step = "design"
+                st.rerun()
+
+    # Planning Phase (optional - between scenario and design)
+    elif st.session_state.current_step == "planning":
+        display_scenario(st.session_state.scenario_data)
+
+        st.markdown("### 🧪 Planning Phase")
+        st.markdown("Before designing the experiment, answer these planning questions to formulate your approach:")
+
+        planning_questions = st.session_state.selected_planning_questions
+        for i, q_id in enumerate(planning_questions, 1):
+            question = get_question_by_id(q_id)
+            if question:
+                difficulty_badge = {"EASY": "🟢", "MEDIUM": "🟡", "HARD": "🔴"}.get(question.difficulty.name, "⚪")
+                st.markdown(f"**Question {i} of {len(planning_questions)}** {difficulty_badge}")
+                st.markdown(f"**{question.text}**")
+                if question.hint:
+                    st.markdown(f"*💡 Hint: {question.hint}*")
+
+                # Text input for planning questions (open-ended)
+                answer = st.text_area(
+                    f"Your answer:",
+                    value=st.session_state.planning_answers.get(q_id, ""),
+                    key=f"planning_{q_id}",
+                    height=100
+                )
+                st.session_state.planning_answers[q_id] = answer
+                st.markdown("---")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⬅️ Back to Scenario", key="back_from_planning"):
+                st.session_state.current_step = "scenario"
+                st.rerun()
+        with col2:
+            if st.button("➡️ Next: Design the Experiment", type="primary", key="planning_to_design"):
+                st.session_state.current_step = "design"
+                st.rerun()
+
     # Show first design question inline if we're in design step with question 1
     elif st.session_state.current_step == "design":
         # Show scenario first
@@ -1541,9 +1765,66 @@ def main():
         if st.session_state.analysis_scoring_results:
             scores, total_score, max_score = st.session_state.analysis_scoring_results
             display_analysis_scoring_results(scores, total_score, max_score)
-            
-            st.markdown("### 🎉 Analysis Complete!")
-            st.markdown("Great job calculating the conversion rates! Generate a new scenario to practice again, or we'll add more analysis questions soon.")
+
+            # Check if interpretation questions are enabled
+            if st.session_state.include_interpretation_questions and st.session_state.selected_interpretation_questions:
+                st.markdown("### 📊 Analysis Phase Complete!")
+                if st.button("➡️ Next: Interpretation Questions", type="primary", key="go_to_interpretation"):
+                    st.session_state.current_step = "interpretation"
+                    st.rerun()
+            else:
+                st.markdown("### 🎉 Analysis Complete!")
+                st.markdown("Great job! Generate a new scenario to practice again.")
+
+    # Interpretation Phase (optional - after analysis)
+    elif st.session_state.current_step == "interpretation":
+        st.markdown("### 💡 Interpretation Phase")
+        st.markdown("Now that you've analyzed the results, answer these interpretation questions:")
+
+        # Show analysis results summary
+        if st.session_state.analysis_results:
+            analysis = st.session_state.analysis_results
+            sim_result = st.session_state.simulation_results
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("P-value", f"{analysis.p_value:.4f}")
+            with col2:
+                st.metric("Relative Lift", f"{sim_result.relative_lift_pct:.1%}")
+            with col3:
+                st.metric("Significant", "Yes" if analysis.significant else "No")
+
+        st.markdown("---")
+
+        interpretation_questions = st.session_state.selected_interpretation_questions
+        for i, q_id in enumerate(interpretation_questions, 1):
+            question = get_question_by_id(q_id)
+            if question:
+                difficulty_badge = {"EASY": "🟢", "MEDIUM": "🟡", "HARD": "🔴"}.get(question.difficulty.name, "⚪")
+                st.markdown(f"**Question {i} of {len(interpretation_questions)}** {difficulty_badge}")
+                st.markdown(f"**{question.text}**")
+                if question.hint:
+                    st.markdown(f"*💡 Hint: {question.hint}*")
+
+                # Text input for interpretation questions (open-ended)
+                answer = st.text_area(
+                    f"Your answer:",
+                    value=st.session_state.interpretation_answers.get(q_id, ""),
+                    key=f"interpretation_{q_id}",
+                    height=100
+                )
+                st.session_state.interpretation_answers[q_id] = answer
+                st.markdown("---")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⬅️ Back to Analysis", key="back_from_interpretation"):
+                st.session_state.current_step = "analysis"
+                st.rerun()
+        with col2:
+            if st.button("✅ Complete Quiz", type="primary", key="complete_quiz"):
+                st.success("### 🎉 Quiz Complete!")
+                st.balloons()
+                st.markdown("Great job completing all phases! Generate a new scenario to practice again.")
 
 if __name__ == "__main__":
     main()
