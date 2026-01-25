@@ -1,0 +1,58 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    # Run on PR events OR on PR comments mentioning @claude
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR info
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "prompt=Review this PR for code quality, potential bugs, and adherence to project conventions in CLAUDE.md. Focus on statistical correctness for any A/B testing code." >> $GITHUB_OUTPUT
+          else
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            # Extract the prompt from the comment (everything after @claude)
+            COMMENT="${{ github.event.comment.body }}"
+            PROMPT=$(echo "$COMMENT" | sed 's/.*@claude//' | xargs)
+            if [ -z "$PROMPT" ]; then
+              PROMPT="Review this PR for code quality, potential bugs, and adherence to project conventions."
+            fi
+            echo "prompt=$PROMPT" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          pr_number: ${{ steps.pr.outputs.number }}
+          prompt: ${{ steps.pr.outputs.prompt }}
+          model: claude-sonnet-4-20250514
+          allowed_tools: |
+            Read
+            Glob
+            Grep
+            Bash(git diff:*)
+            Bash(git log:*)
+            Bash(git show:*)
