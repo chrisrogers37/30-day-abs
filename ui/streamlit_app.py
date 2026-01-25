@@ -312,36 +312,60 @@ def display_scenario(scenario_dto):
 def display_simulation_results(sim_result, analysis):
     """Display simulation results."""
     st.markdown("### 📊 Simulation Results")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("**Control Group:**")
         st.metric("Users", f"{sim_result.control_n:,}")
         st.metric("Conversions", f"{sim_result.control_conversions:,}")
         st.metric("Conversion Rate", f"{sim_result.control_rate:.1%}")
-    
+
     with col2:
         st.markdown("**Treatment Group:**")
         st.metric("Users", f"{sim_result.treatment_n:,}")
         st.metric("Conversions", f"{sim_result.treatment_conversions:,}")
         st.metric("Conversion Rate", f"{sim_result.treatment_rate:.1%}")
-    
+
     st.markdown("### 📈 Analysis Results")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         st.metric("P-value", f"{analysis.p_value:.6f}")
         st.metric("Significant", "✅ Yes" if analysis.significant else "❌ No")
-    
+
     with col2:
         st.metric("Absolute Lift", f"{sim_result.absolute_lift:.1%}")
         st.metric("Relative Lift", f"{sim_result.relative_lift_pct:.1%}")
-    
+
     with col3:
         st.metric("Effect Size", f"{analysis.effect_size:.3f}")
         st.metric("Power Achieved", f"{analysis.power_achieved:.1%}")
+
+    # Display test selection information if available
+    if analysis.test_type_used:
+        test_names = {
+            "two_proportion_z": "Two-Proportion Z-Test",
+            "chi_square": "Chi-Square Test",
+            "fisher_exact": "Fisher's Exact Test"
+        }
+        test_display_name = test_names.get(analysis.test_type_used, analysis.test_type_used)
+
+        with st.expander("🔬 Statistical Test Selection", expanded=False):
+            st.markdown(f"**Test Used:** {test_display_name}")
+
+            if analysis.test_selection:
+                st.markdown("**Reasoning:**")
+                st.info(analysis.test_selection.reasoning)
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Min Expected Cell Count:** {analysis.test_selection.min_expected_cell_count:.1f}")
+                    st.markdown(f"**Sample Size Adequate:** {'✅ Yes' if analysis.test_selection.sample_size_adequate else '❌ No'}")
+                with col2:
+                    st.markdown(f"**Assumptions Met:** {'✅ Yes' if analysis.test_selection.assumptions_met else '⚠️ No'}")
+                    st.markdown(f"**Alternative Tests:** {', '.join(analysis.test_selection.alternative_tests)}")
 
 def create_notebook_download():
     """Create Jupyter notebook download button."""

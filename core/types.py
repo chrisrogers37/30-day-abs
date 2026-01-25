@@ -126,7 +126,18 @@ class SimResult:
         return (self.treatment_rate - self.control_rate) / self.control_rate
 
 
-@dataclass(frozen=True)
+@dataclass
+class StatisticalTestSelection:
+    """Information about which statistical test was selected and why."""
+    test_type: str  # "two_proportion_z", "chi_square", or "fisher_exact"
+    reasoning: str  # Human-readable explanation of why this test was chosen
+    sample_size_adequate: bool  # Whether sample size is sufficient for the test
+    assumptions_met: bool  # Whether test assumptions are satisfied
+    alternative_tests: List[str]  # Other tests that could be used
+    min_expected_cell_count: float  # Minimum expected cell count in contingency table
+
+
+@dataclass
 class AnalysisResult:
     """Statistical analysis results."""
     test_statistic: float
@@ -137,7 +148,9 @@ class AnalysisResult:
     effect_size: float
     power_achieved: float
     recommendation: str
-    
+    test_type_used: Optional[str] = None  # Which statistical test was used
+    test_selection: Optional[StatisticalTestSelection] = None  # Detailed test selection info
+
     def __post_init__(self):
         """Validate analysis results."""
         if not (0 <= self.p_value <= 1):

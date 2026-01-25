@@ -449,6 +449,54 @@ PLANNING_QUESTIONS: Dict[str, Question] = {
         explanation_template="Use {correct} because {reason}"
     ),
 
+    "fisher_vs_chi_square": Question(
+        id="fisher_vs_chi_square",
+        text="When should you use Fisher's exact test instead of chi-square?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["test_selection", "sample_size_considerations"],
+        hint="Consider the expected cell counts in the contingency table.",
+        explanation_template="Use Fisher's exact test when any expected cell count is below 5, as chi-square assumptions are violated."
+    ),
+
+    "expected_cell_count": Question(
+        id="expected_cell_count",
+        text="What is the minimum expected cell count rule for chi-square test validity?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.NUMERIC,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["test_assumptions", "statistical_validity"],
+        hint="This is a standard rule of thumb for contingency tables.",
+        explanation_template="All expected cell counts should be at least 5 for chi-square test to be valid."
+    ),
+
+    "z_test_assumptions": Question(
+        id="z_test_assumptions",
+        text="What sample size condition must be met for the two-proportion z-test normal approximation to be valid?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["test_assumptions", "normal_approximation"],
+        hint="Consider the np and n(1-p) rule.",
+        explanation_template="Both np ≥ 5 and n(1-p) ≥ 5 for each group, or approximately n ≥ 30 per group."
+    ),
+
+    "small_sample_test": Question(
+        id="small_sample_test",
+        text="You have 50 users per group with 2 conversions in control and 5 in treatment. Which test should you use?",
+        category=QuestionCategory.PLANNING,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["test_selection", "practical_application"],
+        hint="Calculate the expected cell counts first.",
+        explanation_template="Fisher's exact test: with only 7 total conversions across 100 users, expected cell counts are too small for chi-square."
+    ),
+
     # Experimental Design Questions
     "allocation_justification": Question(
         id="allocation_justification",
@@ -712,6 +760,43 @@ INTERPRETATION_QUESTIONS: Dict[str, Question] = {
         skills_tested=["confidence_interval_interpretation", "uncertainty_quantification"],
         hint="Consider what values are plausible given this interval.",
         explanation_template="CI including zero means we cannot rule out no effect with 95% confidence."
+    ),
+
+    # Test Selection Understanding
+    "test_selection_impact": Question(
+        id="test_selection_impact",
+        text="If you ran chi-square instead of Fisher's exact on a small sample, what could happen?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["test_selection_consequences", "statistical_validity"],
+        hint="Consider what happens when test assumptions are violated.",
+        explanation_template="Chi-square with small expected counts can give inaccurate p-values (usually too small)."
+    ),
+
+    "effect_size_interpretation": Question(
+        id="effect_size_interpretation",
+        text="What does Cohen's h of 0.15 indicate about the effect size?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.MEDIUM,
+        tolerance=0,
+        skills_tested=["effect_size_understanding", "result_interpretation"],
+        hint="Cohen's h: 0.2 = small, 0.5 = medium, 0.8 = large.",
+        explanation_template="Cohen's h of 0.15 is below small (0.2), indicating a very small effect."
+    ),
+
+    "power_post_hoc": Question(
+        id="power_post_hoc",
+        text="The experiment showed achieved power of 0.45. What does this mean for the interpretation?",
+        category=QuestionCategory.INTERPRETATION,
+        answer_type=AnswerType.CHOICE,
+        difficulty=QuestionDifficulty.HARD,
+        tolerance=0,
+        skills_tested=["power_interpretation", "experimental_validity"],
+        hint="Consider what low power means for detecting true effects.",
+        explanation_template="45% power means 55% chance of missing a true effect. Non-significant results are inconclusive."
     ),
 }
 
