@@ -280,10 +280,15 @@ def run_simulation(scenario_dto):
             # Calculate sample size
             logger.info("📏 Calculating required sample size...")
             sample_size_result = compute_sample_size(core_design_params)
-            
-            # Run simulation (core now calculates true rates internally with realistic variation)
+
+            # Run simulation using calculated sample size (fast mode without user-level data)
             logger.info("🔄 Running simulation with seed=42...")
-            sim_result = simulate_trial(core_design_params, seed=42)
+            sim_result = simulate_trial(
+                core_design_params,
+                seed=42,
+                sample_size_per_arm=sample_size_result.per_arm,
+                generate_user_data=False  # Fast mode
+            )
             
             logger.info(f"🎯 Actual rates - Control: {sim_result.control_rate:.3f}, Treatment: {sim_result.treatment_rate:.3f}")
             

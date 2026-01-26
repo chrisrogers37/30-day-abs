@@ -12,36 +12,43 @@ from typing import Dict, List
 from .types import DesignParams, SimResult
 
 
-def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
+def simulate_trial(params: DesignParams, seed: int = 42,
+                   sample_size_per_arm: int = None,
+                   generate_user_data: bool = False) -> SimResult:
     """
     Simulate a complete AB test trial with user-level data.
-    
+
     This function generates realistic treatment effects that may or may not achieve
     the target lift, allowing for both successful and unsuccessful experiments.
-    
+
     Args:
         params: Design parameters including allocation and traffic
         seed: Random seed for reproducibility
-        
+        sample_size_per_arm: Number of users per arm. If None, uses calculated
+                            sample size based on design params (much faster than
+                            simulating 30 days of traffic)
+        generate_user_data: If True, generates detailed user-level data (slower).
+                           If False, only generates aggregate counts (faster).
+
     Returns:
-        SimResult with conversion counts and user-level data
-        
+        SimResult with conversion counts and optionally user-level data
+
     Raises:
         ValueError: If design parameters are invalid
     """
     # Set random seed for reproducibility
     random.seed(seed)
-    
+
     # Calculate true rates with realistic variation
     # Control rate varies around baseline due to sampling variability
     # This reflects the reality that observed rates differ from true population rates
     baseline_rate = params.baseline_conversion_rate
-    
+
     # Add realistic variation to control rate (±10% of baseline)
     control_variation = random.uniform(-0.1, 0.1)  # ±10% variation
     control_rate = baseline_rate * (1 + control_variation)
     control_rate = max(0.001, min(0.999, control_rate))  # Keep within bounds
-    
+
     # Treatment rate varies around the target lift with realistic uncertainty
     # This allows for both successful and unsuccessful experiments
     # Target: control_rate * (1 + params.target_lift_pct)
@@ -52,37 +59,51 @@ def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
         [1.0, 0.5, 0.0, -0.3],  # Full effect, partial effect, no effect, negative effect
         weights=[0.7, 0.2, 0.08, 0.02]  # Probabilities
     )[0]
-    
+
     # Calculate actual treatment rate with variation
     actual_lift_pct = params.target_lift_pct * effect_variation
     treatment_rate = control_rate * (1 + actual_lift_pct)
-    
+
     # Ensure treatment rate stays within valid bounds
     treatment_rate = max(0.001, min(0.999, treatment_rate))
-    
+
     # Validate rates
     if not (0 <= control_rate <= 1 and 0 <= treatment_rate <= 1):
         raise ValueError("Conversion rates must be between 0 and 1")
-    
-    # Calculate sample sizes based on allocation
-    # For now, use a simple approach - in production, this would use the calculated sample size
-    total_traffic = params.expected_daily_traffic * 30  # Assume 30 days for now
-    control_n = int(total_traffic * params.allocation.control)
-    treatment_n = int(total_traffic * params.allocation.treatment)
-    
-    # Generate user-level data
-    user_data = _generate_user_data(
-        control_n=control_n,
-        treatment_n=treatment_n,
-        control_rate=control_rate,
-        treatment_rate=treatment_rate,
-        seed=seed
-    )
-    
-    # Count conversions
-    control_conversions = sum(1 for user in user_data if user['group'] == 'control' and user['converted'])
-    treatment_conversions = sum(1 for user in user_data if user['group'] == 'treatment' and user['converted'])
-    
+
+    # Calculate sample sizes
+    if sample_size_per_arm is not None:
+        # Use provided sample size
+        control_n = sample_size_per_arm
+        treatment_n = sample_size_per_arm
+    else:
+        # Calculate based on design parameters - use calculated sample size for speed
+        # Import here to avoid circular imports
+        from .design import compute_sample_size
+        sample_size_result = compute_sample_size(params)
+        control_n = sample_size_result.per_arm
+        treatment_n = sample_size_result.per_arm
+
+    if generate_user_data:
+        # Generate full user-level data (slower but provides detailed data)
+        user_data = _generate_user_data(
+            control_n=control_n,
+            treatment_n=treatment_n,
+            control_rate=control_rate,
+            treatment_rate=treatment_rate,
+            seed=seed
+        )
+
+        # Count conversions from user data
+        control_conversions = sum(1 for user in user_data if user['group'] == 'control' and user['converted'])
+        treatment_conversions = sum(1 for user in user_data if user['group'] == 'treatment' and user['converted'])
+    else:
+        # Fast path: just simulate aggregate counts using binomial distribution
+        # This is much faster and statistically equivalent
+        control_conversions = sum(1 for _ in range(control_n) if random.random() < control_rate)
+        treatment_conversions = sum(1 for _ in range(treatment_n) if random.random() < treatment_rate)
+        user_data = []  # No detailed user data in fast mode
+
     return SimResult(
         control_n=control_n,
         control_conversions=control_conversions,
