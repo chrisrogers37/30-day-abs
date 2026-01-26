@@ -1182,7 +1182,7 @@ def main():
                 st.session_state.sample_size_result = sample_size_result
                 
                 # Log simulation and analysis results
-                if st.session_state.quiz_logger:
+                if st.session_state.quiz_logger and sample_size_result is not None and sim_result is not None and analysis_result is not None:
                     # Log sample size calculation
                     design_params_dict = {
                         'alpha': st.session_state.scenario_data.design_params.alpha,

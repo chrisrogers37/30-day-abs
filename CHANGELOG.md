@@ -280,6 +280,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `sample_size_per_arm` parameter for explicit control
   - Added `generate_user_data` flag to skip expensive user-level data generation
   - This also fixes the test suite slowness (30+ minutes → ~5 minutes)
+- **Logging AttributeError** - Fixed `AttributeError: 'NoneType' object has no attribute 'per_arm'` crash
+  - Added guard conditions to check for None before accessing simulation results in logging code
+  - Prevents crash when simulation fails and returns (None, None, None)
 
 ### Improved
 - **CLAUDE.md Documentation** - Added changelog maintenance guidelines, test templates, and logging standards
