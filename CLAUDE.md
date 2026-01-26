@@ -120,6 +120,121 @@ claude /install-github-action
 
 This enables tagging @claude in PR reviews to suggest CLAUDE.md updates.
 
+## Changelog Maintenance (CRITICAL)
+
+**ALWAYS update CHANGELOG.md when creating PRs.** The changelog is the user-facing record of all changes.
+
+**Format**: This project uses [Keep a Changelog](https://keepachangelog.com/) with [Semantic Versioning](https://semver.org/).
+
+**When to update**:
+- **Every PR** must include a CHANGELOG.md entry
+- Add entries under `## [Unreleased]` section
+- Move entries to a versioned section when releasing
+
+**Version bump rules** (Semantic Versioning):
+- **MAJOR** (X.0.0): Breaking changes, incompatible API changes
+- **MINOR** (x.Y.0): New features, backward-compatible additions
+- **PATCH** (x.y.Z): Bug fixes, performance improvements
+
+**Entry categories** (use as applicable):
+- `### Added` - New features or capabilities
+- `### Changed` - Changes to existing functionality
+- `### Fixed` - Bug fixes
+- `### Improved` - Performance or UX improvements
+- `### Technical Improvements` - Internal changes
+
+**Entry format**:
+```markdown
+## [Unreleased]
+
+### Added
+- **Feature Name** - Brief description of what was added
+  - Sub-bullet with implementation detail if needed
+
+### Fixed
+- **Bug Name** - What was broken and how it was fixed
+```
+
+**Best practices**:
+- Write entries from the user's perspective (what changed for them)
+- Include enough detail to understand the change without reading code
+- Group related changes under descriptive subheadings
+- Include Technical Improvements section for significant internal changes
+
+## Test Template
+
+When adding new tests, follow this structure:
+
+```python
+# tests/module/test_feature.py
+import pytest
+from unittest.mock import Mock, patch
+
+@pytest.fixture
+def my_fixture():
+    """Fixture description."""
+    return SomeClass()
+
+class TestFeatureName:
+    """Test suite for FeatureName."""
+
+    @pytest.mark.unit
+    def test_method_success_case(self, my_fixture):
+        """Test description of what this validates."""
+        # Arrange
+        my_fixture.dependency = Mock(return_value="expected")
+
+        # Act
+        result = my_fixture.method_under_test()
+
+        # Assert
+        assert result == "expected"
+
+    @pytest.mark.unit
+    def test_method_error_case(self, my_fixture):
+        """Test error handling."""
+        # Arrange
+        my_fixture.dependency = Mock(side_effect=ValueError("error"))
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="error"):
+            my_fixture.method_under_test()
+```
+
+## Documentation Organization
+
+**Important**: All helpful markdown documentation should be placed in `development_docs/`.
+
+```
+development_docs/
+├── README.md           # Index of all documentation
+├── development.md      # Development setup and workflow
+├── testing.md          # How to run and write tests
+└── architecture.md     # Design decisions and patterns
+```
+
+**Root-level documentation exceptions** (only these in project root):
+- `README.md` - Project overview and quick start
+- `CHANGELOG.md` - Version history
+- `CLAUDE.md` - This file (AI assistant guide)
+- `LICENSE` - Project license
+
+## Logging Standards
+
+Use the centralized logging from `core/logging.py`:
+
+```python
+from core.logging import get_logger
+
+logger = get_logger(__name__)
+
+# Use appropriate levels
+logger.debug("Detailed diagnostic info")      # DEBUG: Development debugging
+logger.info("General informational messages") # INFO: Normal operations
+logger.warning("Something unexpected")        # WARNING: Handled issues
+logger.error("Error occurred", exc_info=True) # ERROR: Failures with traceback
+```
+
 ---
 
 _Update this file continuously. Every mistake Claude makes is a learning opportunity._

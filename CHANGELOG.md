@@ -267,6 +267,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Comprehensive Test Suites** - New test files for improved coverage:
+  - `test_client_comprehensive.py` - 38 tests for LLM client (42% → 94% coverage)
+  - `test_guardrails_comprehensive.py` - 28 tests for guardrails (44% → 85% coverage)
+  - `test_integration_comprehensive.py` - 13 tests for LLM integration (0% → 91% coverage)
+  - `test_design_comprehensive.py` - 31 tests for design module (63% → 88% coverage)
+
+### Fixed
+- **Simulation Performance** - Optimized `simulate_trial()` from 27 seconds to 0.01 seconds (~2700x faster)
+  - Now uses calculated sample size instead of generating 30 days of traffic
+  - Added `sample_size_per_arm` parameter for explicit control
+  - Added `generate_user_data` flag to skip expensive user-level data generation
+  - This also fixes the test suite slowness (30+ minutes → ~5 minutes)
+
+### Improved
+- **CLAUDE.md Documentation** - Added changelog maintenance guidelines, test templates, and logging standards
+
+### Technical Improvements
+- **Test Coverage** - Overall coverage improved to ~70% (excluding slow simulation tests)
+- **Code Quality** - Removed unused imports and variables across 13 files via ruff
+
 ### Planned
 - Streamlit Cloud deployment
 - Additional question types and difficulty levels
