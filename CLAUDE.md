@@ -1,78 +1,227 @@
-# CLAUDE.md - Project Instructions for Claude Code
+# CLAUDE.md - Project Instructions for Claude
 
-This file provides project-specific guidance for Claude Code. Update this file whenever Claude does something incorrectly so it learns not to repeat mistakes.
+This file provides project-specific guidance for Claude (Code CLI, web app, or phone app). Update this file whenever Claude does something incorrectly so it learns not to repeat mistakes.
 
-## Project Overview
+## Quick Context (Paste into Claude Web/Phone)
 
-**30 Day A/Bs** is an A/B testing interview practice simulator built with AI-generated scenarios. It helps users practice experimental design, statistical analysis, and result interpretation through realistic business scenarios in a quiz format.
+**30 Day A/Bs** is an A/B testing interview practice simulator. Users get AI-generated business scenarios and practice experimental design + statistical analysis in a quiz format.
 
-### Architecture
+**Tech Stack**: Python 3.11+, Streamlit (UI), OpenAI GPT-4 (scenarios), Pydantic (schemas), pytest (testing)
+
+**Architecture**: `LLM Layer → Core Engine (pure math) → UI Layer`
+
+---
+
+## Current State
+
+**Version**: 1.5.1 (see CHANGELOG.md for details)
+
+**Recent Changes**:
+- Fixed simulation performance (27s → 0.01s by using calculated sample size)
+- Added comprehensive test suites (89% core coverage, 283 tests)
+- Fixed AttributeError in logging when simulation fails
+
+**Known Issues**:
+- Streamlit Cloud deployment badge links to placeholder
+- Some E2E tests require OpenAI API key
+
+**In Progress / TODO**:
+- [ ] Streamlit Cloud deployment
+- [ ] Additional question types and difficulty levels
+- [ ] More statistical test options (chi-square, Fisher's exact)
+- [ ] Export functionality for results and reports
+
+---
+
+## File Map
 
 ```
-LLM Layer (GPT-4) → Core Engine (Pure Math) → UI Layer (Streamlit)
+30-day-abs/
+├── CLAUDE.md              # THIS FILE - AI assistant guide
+├── README.md              # Project overview, quick start
+├── CHANGELOG.md           # Version history (Keep a Changelog format)
+├── requirements.txt       # Production dependencies
+├── requirements-dev.txt   # Dev dependencies (pytest, black, ruff, mypy)
+├── pytest.ini             # Test configuration and markers
+│
+├── core/                  # PURE MATH - No I/O, no side effects
+│   ├── types.py           # Domain types: Allocation, DesignParams, SampleSize, SimResult, AnalysisResult
+│   ├── design.py          # Sample size calculations (two-proportion z-test)
+│   ├── simulate.py        # Data simulation with treatment effect variation
+│   ├── analyze.py         # Statistical analysis: z-test, CI, p-value, business impact
+│   ├── validation.py      # Answer validation for quiz questions
+│   ├── scoring.py         # Answer key generation and quiz results
+│   ├── rng.py             # Reproducible random number generation
+│   ├── utils.py           # Helpers: lift conversion, formatting
+│   ├── logging.py         # Centralized logging system
+│   └── question_bank.py   # Quiz question definitions
+│
+├── llm/                   # LLM integration (OpenAI)
+│   ├── client.py          # OpenAI API client with rate limiting
+│   ├── generator.py       # Scenario generation prompts
+│   ├── parser.py          # JSON response parsing
+│   ├── guardrails.py      # Response validation
+│   └── integration.py     # Orchestration layer
+│
+├── schemas/               # Pydantic DTOs for type safety
+│   ├── scenario.py        # ScenarioDTO, CompanyType, UserSegment
+│   ├── design.py          # DesignParamsDTO, AllocationDTO
+│   ├── analyze.py         # AnalysisResultDTO
+│   └── ...                # Other schema files
+│
+├── ui/
+│   └── streamlit_app.py   # Main Streamlit web application
+│
+├── tests/                 # 283 tests, 89% core coverage
+│   ├── conftest.py        # 20+ shared fixtures
+│   ├── core/              # Core module tests (18 files)
+│   ├── llm/               # LLM module tests (5 files)
+│   └── ui/                # UI tests
+│
+├── development_docs/      # Comprehensive dev documentation
+│   ├── DEVELOPMENT_GUIDE.md
+│   ├── TESTING_GUIDE.md
+│   └── ...
+│
+├── .claude/               # Claude Code configuration
+│   ├── settings.json      # Permissions
+│   └── commands/          # Slash commands (/verify, /quick-commit, etc.)
+│
+└── logs/                  # Application and quiz session logs
 ```
 
-- **`core/`** - Pure mathematical functions, deterministic, no external dependencies
-- **`llm/`** - LLM integration for scenario generation
-- **`schemas/`** - Pydantic DTOs for type safety and validation
-- **`ui/`** - Streamlit web application
-- **`tests/`** - Comprehensive test suite (89% core coverage)
+---
+
+## Key Code Patterns
+
+### 1. Core Types (Immutable Dataclasses)
+
+```python
+# core/types.py - All types are frozen for data integrity
+@dataclass(frozen=True)
+class DesignParams:
+    baseline_conversion_rate: float  # e.g., 0.05 for 5%
+    target_lift_pct: float           # e.g., 0.20 for 20% lift
+    alpha: float                     # e.g., 0.05
+    power: float                     # e.g., 0.80
+    allocation: Allocation           # e.g., Allocation(0.5, 0.5)
+    expected_daily_traffic: int      # e.g., 10000
+```
+
+### 2. Sample Size Calculation
+
+```python
+from core.design import compute_sample_size
+from core.types import DesignParams, Allocation
+
+params = DesignParams(
+    baseline_conversion_rate=0.05,
+    target_lift_pct=0.20,
+    alpha=0.05,
+    power=0.80,
+    allocation=Allocation(0.5, 0.5),
+    expected_daily_traffic=10000
+)
+result = compute_sample_size(params)  # Returns SampleSize
+print(f"Need {result.per_arm} users per arm, {result.days_required} days")
+```
+
+### 3. Simulation
+
+```python
+from core.simulate import simulate_trial
+
+# Fast mode (recommended) - uses calculated sample size
+sim_result = simulate_trial(
+    params,
+    seed=42,
+    sample_size_per_arm=result.per_arm,
+    generate_user_data=False  # Fast: only aggregate counts
+)
+
+# Slow mode - generates full user-level data
+sim_result = simulate_trial(params, seed=42, generate_user_data=True)
+```
+
+### 4. Statistical Analysis
+
+```python
+from core.analyze import analyze_results
+
+analysis = analyze_results(sim_result, alpha=0.05)
+print(f"P-value: {analysis.p_value}")
+print(f"Significant: {analysis.significant}")
+print(f"CI: {analysis.confidence_interval}")
+```
+
+### 5. Schema Validation (Pydantic)
+
+```python
+from schemas.design import DesignParamsDTO
+
+# All data between layers MUST use Pydantic schemas
+dto = DesignParamsDTO(
+    baseline_conversion_rate=0.05,
+    target_lift_pct=0.20,
+    alpha=0.05,
+    power=0.80,
+    allocation=AllocationDTO(control=0.5, treatment=0.5),
+    expected_daily_traffic=10000
+)
+```
+
+### 6. Logging
+
+```python
+from core.logging import get_logger
+
+logger = get_logger(__name__)
+logger.info("Starting simulation...")
+logger.error("Error occurred", exc_info=True)
+```
+
+---
 
 ## Development Workflow
 
-Give Claude verification loops for 2-3x quality improvement:
+### Verification Loop (Run Before Every Commit)
 
-1. Make changes
-2. Run type checking: `mypy core/ llm/ schemas/`
-3. Run tests: `pytest`
-4. Run linting: `ruff check .`
-5. Format code: `black .`
-6. Before creating PR: run full test suite with coverage
-
-## Code Style & Conventions
-
-### Python Style
-- Use type hints for all function signatures
-- Use Pydantic models for data validation (see `schemas/`)
-- Prefer immutable data structures (frozen dataclasses, Pydantic models)
-- Use `from __future__ import annotations` for forward references
-- Follow PEP 8, enforced by Black and Ruff
-
-### Testing Style
-- Use pytest fixtures from `tests/conftest.py`
-- Use `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.e2e` markers
-- Use `@pytest.mark.requires_api` for tests that need OpenAI
-- Mock LLM calls in unit tests, use real API only in E2E tests
-
-### A/B Testing Domain
-- Alpha (α) = significance level, typically 0.05
-- Power = 1 - β, typically 0.80
-- Effect size = minimum detectable effect (MDE)
-- Always validate statistical assumptions before recommending tests
-
-## Commands Reference
-
-```sh
-# Development
-streamlit run ui/streamlit_app.py    # Run the app
-
-# Verification loop
-mypy core/ llm/ schemas/             # Type checking
-pytest                                # Run all tests
-pytest -m unit                        # Unit tests only
-pytest -m integration                 # Integration tests only
-pytest -m "not requires_api"          # Skip API-dependent tests
-ruff check .                          # Lint
-ruff check --fix .                    # Auto-fix lint issues
-black .                               # Format code
-
-# Coverage
-pytest --cov=core --cov=llm --cov=schemas --cov-report=html
-
-# Git workflow
-git status                            # Check current state
-git diff                              # Review changes before commit
+```bash
+mypy core/ llm/ schemas/      # Type checking
+pytest                        # Run all tests
+ruff check .                  # Lint
+black .                       # Format
 ```
+
+### Common Commands
+
+```bash
+# Run the app
+streamlit run ui/streamlit_app.py
+
+# Testing
+pytest                              # All tests
+pytest -m unit                      # Unit tests only
+pytest -m "not requires_api"        # Skip API tests
+pytest --cov=core --cov-report=html # With coverage
+
+# Code quality
+mypy core/ llm/ schemas/
+ruff check --fix .
+black .
+```
+
+### Test Markers
+
+```python
+@pytest.mark.unit         # Fast unit tests
+@pytest.mark.integration  # Integration tests
+@pytest.mark.e2e          # End-to-end tests
+@pytest.mark.slow         # Slow tests
+@pytest.mark.requires_api # Needs OpenAI API key
+```
+
+---
 
 ## Things Claude Should NOT Do
 
@@ -84,156 +233,123 @@ git diff                              # Review changes before commit
 - Don't break the pure mathematical core by adding I/O or side effects
 - Don't skip the verification loop (typecheck → test → lint)
 - Don't commit secrets or API keys
+- Don't create new files unless absolutely necessary - prefer editing existing files
 
-## Project-Specific Patterns
+---
 
-### Schema Validation
-All data flowing between layers must use Pydantic schemas from `schemas/`. Never pass raw dicts.
+## Troubleshooting
 
-### Deterministic Simulation
-The `core/simulate.py` module uses seeded RNG for reproducibility. Always pass `random_seed` for deterministic tests.
-
-### Statistical Test Selection
-When analyzing A/B tests, use `core/analyze.py` which automatically selects appropriate statistical tests based on:
-- Metric type (conversion rate vs continuous)
-- Sample size
-- Distribution characteristics
-
-### Logging
-Use the centralized logging from `core/logging.py`. Don't use print statements or create new loggers.
-
-## Workflow Tips
-
-Based on Boris Cherny's recommendations:
-
-1. **Start in Plan Mode** (Shift+Tab twice) - Iterate on the plan before writing code
-2. **Verification is key** - Always give Claude a way to verify its work (tests, type checks)
-3. **Update this file** - When Claude makes a mistake, add it to "Things Claude Should NOT Do"
-4. **Use slash commands** - `/verify`, `/test-and-fix`, `/quick-commit` for common workflows
-
-### GitHub Integration
-
-Consider installing the Claude GitHub action for automated PR reviews:
-```sh
-claude /install-github-action
+### "ModuleNotFoundError: No module named 'streamlit'"
+```bash
+pip install -r requirements.txt
 ```
 
-This enables tagging @claude in PR reviews to suggest CLAUDE.md updates.
+### "OPENAI_API_KEY not set"
+```bash
+echo "OPENAI_API_KEY=your_key_here" > .env
+```
+
+### Tests taking too long (30+ minutes)
+The simulation tests were optimized. If slow, check that `simulate_trial()` is using `sample_size_per_arm` parameter instead of generating 30 days of traffic.
+
+### AttributeError accessing simulation results
+Always check for None before accessing attributes:
+```python
+if sim_result is not None:
+    print(sim_result.control_n)
+```
+
+### Coverage report not generating
+```bash
+pytest --cov=core --cov=llm --cov=schemas --cov-report=html
+open htmlcov/index.html
+```
+
+---
+
+## Session Handoff (For Claude Web/Phone)
+
+When starting a new Claude session on this project:
+
+1. **Share this file** - Copy/paste CLAUDE.md or upload it
+2. **Share the specific file** - Upload the file you want to work on
+3. **Describe the task** - What you want to accomplish
+4. **Share error messages** - Full tracebacks if debugging
+
+Example prompt:
+```
+I'm working on the 30-day-abs project (A/B testing interview practice app).
+Here's the CLAUDE.md context: [paste]
+Here's the file I'm working on: [paste/upload]
+I want to [describe task].
+```
+
+---
 
 ## Changelog Maintenance (CRITICAL)
 
-**ALWAYS update CHANGELOG.md when creating PRs.** The changelog is the user-facing record of all changes.
+**ALWAYS update CHANGELOG.md when creating PRs.**
 
-**Format**: This project uses [Keep a Changelog](https://keepachangelog.com/) with [Semantic Versioning](https://semver.org/).
+**Format**: [Keep a Changelog](https://keepachangelog.com/) with [Semantic Versioning](https://semver.org/)
 
-**When to update**:
-- **Every PR** must include a CHANGELOG.md entry
-- Add entries under `## [Unreleased]` section
-- Move entries to a versioned section when releasing
+**Version bump rules**:
+- **MAJOR** (X.0.0): Breaking changes
+- **MINOR** (x.Y.0): New features
+- **PATCH** (x.y.Z): Bug fixes
 
-**Version bump rules** (Semantic Versioning):
-- **MAJOR** (X.0.0): Breaking changes, incompatible API changes
-- **MINOR** (x.Y.0): New features, backward-compatible additions
-- **PATCH** (x.y.Z): Bug fixes, performance improvements
+**Entry categories**: Added, Changed, Fixed, Improved, Technical Improvements
 
-**Entry categories** (use as applicable):
-- `### Added` - New features or capabilities
-- `### Changed` - Changes to existing functionality
-- `### Fixed` - Bug fixes
-- `### Improved` - Performance or UX improvements
-- `### Technical Improvements` - Internal changes
-
-**Entry format**:
 ```markdown
 ## [Unreleased]
 
 ### Added
-- **Feature Name** - Brief description of what was added
-  - Sub-bullet with implementation detail if needed
+- **Feature Name** - Brief description
+  - Implementation detail if needed
 
 ### Fixed
 - **Bug Name** - What was broken and how it was fixed
 ```
 
-**Best practices**:
-- Write entries from the user's perspective (what changed for them)
-- Include enough detail to understand the change without reading code
-- Group related changes under descriptive subheadings
-- Include Technical Improvements section for significant internal changes
+---
 
 ## Test Template
 
-When adding new tests, follow this structure:
-
 ```python
-# tests/module/test_feature.py
 import pytest
 from unittest.mock import Mock, patch
-
-@pytest.fixture
-def my_fixture():
-    """Fixture description."""
-    return SomeClass()
 
 class TestFeatureName:
     """Test suite for FeatureName."""
 
     @pytest.mark.unit
-    def test_method_success_case(self, my_fixture):
-        """Test description of what this validates."""
+    def test_success_case(self):
+        """Test description."""
         # Arrange
-        my_fixture.dependency = Mock(return_value="expected")
+        input_data = create_test_data()
 
         # Act
-        result = my_fixture.method_under_test()
+        result = function_under_test(input_data)
 
         # Assert
-        assert result == "expected"
+        assert result == expected_value
 
     @pytest.mark.unit
-    def test_method_error_case(self, my_fixture):
+    def test_error_case(self):
         """Test error handling."""
-        # Arrange
-        my_fixture.dependency = Mock(side_effect=ValueError("error"))
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="error"):
-            my_fixture.method_under_test()
+        with pytest.raises(ValueError, match="expected error"):
+            function_under_test(invalid_input)
 ```
 
-## Documentation Organization
+---
 
-**Important**: All helpful markdown documentation should be placed in `development_docs/`.
+## A/B Testing Domain Quick Reference
 
-```
-development_docs/
-├── README.md           # Index of all documentation
-├── development.md      # Development setup and workflow
-├── testing.md          # How to run and write tests
-└── architecture.md     # Design decisions and patterns
-```
-
-**Root-level documentation exceptions** (only these in project root):
-- `README.md` - Project overview and quick start
-- `CHANGELOG.md` - Version history
-- `CLAUDE.md` - This file (AI assistant guide)
-- `LICENSE` - Project license
-
-## Logging Standards
-
-Use the centralized logging from `core/logging.py`:
-
-```python
-from core.logging import get_logger
-
-logger = get_logger(__name__)
-
-# Use appropriate levels
-logger.debug("Detailed diagnostic info")      # DEBUG: Development debugging
-logger.info("General informational messages") # INFO: Normal operations
-logger.warning("Something unexpected")        # WARNING: Handled issues
-logger.error("Error occurred", exc_info=True) # ERROR: Failures with traceback
-```
+- **Alpha (α)**: Significance level, typically 0.05 (5% false positive rate)
+- **Power (1-β)**: Typically 0.80 (80% chance of detecting true effect)
+- **MDE**: Minimum Detectable Effect (smallest lift worth detecting)
+- **Relative Lift**: `(treatment_rate - control_rate) / control_rate`
+- **Absolute Lift**: `treatment_rate - control_rate`
+- **Sample Size Formula**: Two-proportion z-test (see `core/design.py`)
 
 ---
 

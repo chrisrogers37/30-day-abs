@@ -285,7 +285,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents crash when simulation fails and returns (None, None, None)
 
 ### Improved
-- **CLAUDE.md Documentation** - Added changelog maintenance guidelines, test templates, and logging standards
+- **CLAUDE.md Documentation** - Major overhaul for better Claude web/phone support
+  - Added "Current State" section with version, recent changes, known issues, TODOs
+  - Added comprehensive "File Map" with directory structure and file purposes
+  - Added "Key Code Patterns" with copy-paste code examples
+  - Added "Troubleshooting" section for common issues
+  - Added "Session Handoff" guidance for continuing work across sessions
+  - Added A/B testing domain quick reference
+- **PROJECT_CONTEXT.md** - New condensed briefing document for Claude web/phone sessions
+  - Single-file context that can be pasted at session start
+  - Includes architecture, key files, code patterns, commands, and rules
+- **New /context command** - Generates project status summary for session handoff
 
 ### Technical Improvements
 - **Test Coverage** - Overall coverage improved to ~70% (excluding slow simulation tests)
