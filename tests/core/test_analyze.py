@@ -182,26 +182,16 @@ class TestAnalysisTestTypes:
     def test_chi_square_test(self):
         """Test chi-square test."""
         result = create_significant_positive_result()
-        
-        try:
-            analysis = analyze_results(result, alpha=0.05, test_type="chi_square")
-            assert_p_value_valid(analysis.p_value)
-        except Exception:
-            # Chi-square may not be implemented yet
-            pytest.skip("Chi-square test not fully implemented")
-    
+        analysis = analyze_results(result, alpha=0.05, test_type="chi_square")
+        assert_p_value_valid(analysis.p_value)
+
     @pytest.mark.unit
     def test_fisher_exact_test(self):
         """Test Fisher's exact test."""
         result = create_sim_result(control_n=50, control_conversions=5,
                                    treatment_n=50, treatment_conversions=10)
-        
-        try:
-            analysis = analyze_results(result, alpha=0.05, test_type="fisher_exact")
-            assert_p_value_valid(analysis.p_value)
-        except Exception:
-            # Fisher's exact may not be implemented yet
-            pytest.skip("Fisher's exact test not fully implemented")
+        analysis = analyze_results(result, alpha=0.05, test_type="fisher_exact")
+        assert_p_value_valid(analysis.p_value)
     
     @pytest.mark.unit
     def test_invalid_test_type(self):
