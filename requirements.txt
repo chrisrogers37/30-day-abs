@@ -1,6 +1,7 @@
 streamlit
 pandas
 numpy
+scipy
 httpx
 openai
 pydantic
