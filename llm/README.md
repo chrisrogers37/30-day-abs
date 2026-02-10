@@ -6,7 +6,7 @@ The LLM integration module provides comprehensive functionality for generating r
 
 This module serves as the bridge between LLM capabilities and the AB test simulator's core mathematical engine. It handles:
 
-- **LLM Client Management**: Pluggable interface supporting OpenAI, Anthropic, and mock providers
+- **LLM Client Management**: Pluggable interface supporting OpenAI and mock providers (Anthropic planned but not yet implemented)
 - **Scenario Generation**: Orchestrated generation of realistic business scenarios with retry logic
 - **JSON Parsing & Validation**: Robust parsing of LLM outputs with comprehensive error handling
 - **Parameter Guardrails**: Validation and clamping of generated parameters to ensure statistical soundness
@@ -40,7 +40,7 @@ This module serves as the bridge between LLM capabilities and the AB test simula
 **Purpose**: Provides a unified interface for LLM API interactions with comprehensive error handling and retry logic.
 
 **Key Features**:
-- **Pluggable Providers**: Support for OpenAI, Anthropic, and mock clients
+- **Pluggable Providers**: Support for OpenAI and mock clients (Anthropic provider interface exists but is not yet implemented)
 - **Retry Logic**: Exponential backoff with configurable retry attempts
 - **Rate Limiting**: Built-in rate limit handling and delays
 - **Error Classification**: Specific exception types for different failure modes
@@ -119,16 +119,17 @@ if result.success:
 
 **Key Classes**:
 - `LLMGuardrails`: Main validation engine
+- `NoveltyScorer`: Tracks and scores scenario uniqueness to maximize variety
 - `ValidationResult`: Comprehensive validation results
 - `GuardrailError`: Specific exception for validation failures
 
-**Parameter Bounds**:
-- `baseline_conversion_rate`: 0.001 to 0.5 (0.1% to 50%)
-- `mde_absolute`: 0.001 to 0.1 (0.1% to 10% percentage points)
-- `target_lift_pct`: -0.5 to 0.5 (-50% to +50%)
-- `alpha`: 0.01 to 0.1 (1% to 10%)
-- `power`: 0.7 to 0.95 (70% to 95%)
-- `expected_daily_traffic`: 500 to 5,000
+**Parameter Bounds** (as defined in `guardrails.py`):
+- `baseline_conversion_rate`: 0.001 to 0.8 (0.1% to 80%)
+- `mde_absolute`: 0.001 to 0.2 (0.1% to 20% percentage points)
+- `target_lift_pct`: -0.5 to 1.0 (-50% to +100%)
+- `alpha`: 0.001 to 0.2 (0.1% to 20%)
+- `power`: 0.5 to 0.99 (50% to 99%)
+- `expected_daily_traffic`: 100 to 10,000,000 (with traffic tiers: Early Stage 100-1K, Growth 1K-10K, Scale 10K-100K, Enterprise 100K-10M)
 
 **Usage Example**:
 ```python
@@ -251,11 +252,11 @@ if result.success:
 # OpenAI Configuration
 OPENAI_API_KEY=your-openai-api-key
 
-# Anthropic Configuration (when implemented)
-ANTHROPIC_API_KEY=your-anthropic-api-key
+# Anthropic Configuration (not yet implemented)
+# ANTHROPIC_API_KEY=your-anthropic-api-key
 
 # LLM Configuration
-LLM_PROVIDER=openai  # openai, anthropic, mock
+LLM_PROVIDER=openai  # openai, mock (anthropic planned but not yet implemented)
 LLM_MODEL=gpt-4
 LLM_MAX_RETRIES=3
 LLM_TIMEOUT=30

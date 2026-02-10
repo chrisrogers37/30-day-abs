@@ -50,43 +50,61 @@ tests/
 ├── __init__.py
 ├── conftest.py                      # Pytest configuration & shared fixtures
 │
-├── core/                            # Unit tests for core/
+├── core/                            # Unit tests for core/ (27 test files)
 │   ├── __init__.py
 │   ├── test_analyze.py              # Tests for core.analyze
-│   ├── test_design.py               # Tests for core.design
-│   ├── test_rng.py                  # Tests for core.rng
-│   ├── test_scoring.py              # Tests for core.scoring
-│   ├── test_simulate.py             # Tests for core.simulate
-│   ├── test_types.py                # Tests for core.types
-│   ├── test_utils.py                # Tests for core.utils
-│   └── test_validation.py           # Tests for core.validation
+│   ├── test_analyze_business.py     # Business impact analysis tests
+│   ├── test_analyze_extended.py     # Extended analysis edge cases
+│   ├── test_analyze_statistical_tests.py  # Chi-square, Fisher's exact tests
+│   ├── test_design.py               # Sample size calculation tests
+│   ├── test_design_extended.py      # Extended design edge cases
+│   ├── test_design_helpers.py       # Design helper function tests
+│   ├── test_logging.py              # Centralized logging tests
+│   ├── test_logging_quiz.py         # Quiz session logging tests
+│   ├── test_question_bank.py        # Question bank tests (50+ questions)
+│   ├── test_rng.py                  # RNG determinism tests
+│   ├── test_rng_advanced.py         # Advanced RNG distribution tests
+│   ├── test_rng_extended.py         # Extended RNG edge cases
+│   ├── test_scoring.py              # Answer key & scoring tests
+│   ├── test_scoring_variable.py     # Variable scoring tests
+│   ├── test_simulate.py             # Data simulation tests
+│   ├── test_simulate_extended.py    # Extended simulation tests
+│   ├── test_simulate_utilities.py   # Simulation utility tests
+│   ├── test_types.py                # Domain type tests
+│   ├── test_types_extended.py       # Extended type tests
+│   ├── test_utils.py                # Utility function tests
+│   ├── test_utils_extended.py       # Extended utility tests
+│   ├── test_validation.py           # Answer validation tests
+│   ├── test_validation_by_id.py     # Validation by question ID tests
+│   └── test_validation_scoring.py   # Validation scoring integration tests
 │
-├── llm/                             # Unit tests for llm/
+├── llm/                             # LLM integration tests (6 test files)
 │   ├── __init__.py
-│   ├── test_client.py               # Tests for llm.client
-│   ├── test_generator.py            # Tests for llm.generator
-│   ├── test_guardrails.py           # Tests for llm.guardrails
-│   ├── test_integration.py          # Tests for llm.integration
-│   └── test_parser.py               # Tests for llm.parser
+│   ├── test_client.py               # LLM client tests
+│   ├── test_generator.py            # Scenario generation tests
+│   ├── test_guardrails.py           # Parameter validation tests
+│   ├── test_integration.py          # LLM pipeline tests
+│   ├── test_novelty_scoring.py      # Novelty scoring tests
+│   └── test_parser.py               # JSON parsing tests
 │
-├── schemas/                         # Unit tests for schemas/
+├── schemas/                         # Schema validation tests (6 test files)
 │   ├── __init__.py
-│   ├── test_analyze.py              # Tests for schemas.analyze
-│   ├── test_design.py               # Tests for schemas.design
-│   ├── test_evaluation.py           # Tests for schemas.evaluation
-│   ├── test_scenario.py             # Tests for schemas.scenario
-│   ├── test_shared.py               # Tests for schemas.shared
-│   └── test_simulate.py             # Tests for schemas.simulate
+│   ├── test_analyze.py              # Analysis schema tests
+│   ├── test_design.py               # Design schema tests
+│   ├── test_evaluation.py           # Evaluation schema tests
+│   ├── test_scenario.py             # Scenario schema tests
+│   ├── test_shared.py               # Shared schema tests
+│   └── test_simulate.py             # Simulation schema tests
 │
 ├── ui/                              # UI component tests
 │   ├── __init__.py
-│   └── test_streamlit_app.py        # Enhanced Streamlit tests
+│   └── test_streamlit_app_enhanced.py  # Enhanced Streamlit tests
 │
 ├── integration/                     # E2E integration tests
 │   ├── __init__.py
 │   ├── test_complete_workflow.py    # Full quiz flow
-│   ├── test_llm_pipeline.py         # LLM → Core → Analysis
 │   ├── test_data_export.py          # Data generation & export
+│   ├── test_llm_pipeline.py         # LLM → Core → Analysis
 │   └── test_real_api.py             # Real API tests (CI skip)
 │
 ├── fixtures/                        # Shared test data
@@ -95,8 +113,8 @@ tests/
 │   │   ├── ecommerce_scenario.json
 │   │   ├── saas_scenario.json
 │   │   └── fintech_scenario.json
-│   ├── llm_responses.py             # Mock LLM responses
 │   ├── expected_results.py          # Expected calculation results
+│   ├── llm_responses.py             # Mock LLM responses
 │   └── test_data.py                 # Reusable test data
 │
 ├── helpers/                         # Test utilities
@@ -106,7 +124,8 @@ tests/
 │   └── mocks.py                     # Mock helpers
 │
 ├── test_basic.py                    # Quick smoke tests
-└── test_notebooks.py                # Notebook template validation
+├── test_notebooks.py                # Notebook template validation
+└── test_streamlit_app.py            # Basic Streamlit import/functionality tests
 ```
 
 ### Module-to-Test Mapping
@@ -115,21 +134,23 @@ Each source module has a corresponding test module:
 
 | Source Module | Test Module | Focus |
 |--------------|-------------|-------|
-| `core/analyze.py` | `tests/core/test_analyze.py` | Statistical analysis functions |
-| `core/design.py` | `tests/core/test_design.py` | Sample size calculations |
-| `core/rng.py` | `tests/core/test_rng.py` | RNG determinism |
-| `core/scoring.py` | `tests/core/test_scoring.py` | Answer key generation |
-| `core/simulate.py` | `tests/core/test_simulate.py` | Data simulation |
-| `core/types.py` | `tests/core/test_types.py` | Type validation |
-| `core/utils.py` | `tests/core/test_utils.py` | Utility functions |
-| `core/validation.py` | `tests/core/test_validation.py` | Answer validation |
+| `core/analyze.py` | `tests/core/test_analyze.py` + 3 extended files | Statistical analysis, business impact, test selection |
+| `core/design.py` | `tests/core/test_design.py` + 2 extended files | Sample size calculations, helpers |
+| `core/logging.py` | `tests/core/test_logging.py`, `test_logging_quiz.py` | Centralized and quiz session logging |
+| `core/question_bank.py` | `tests/core/test_question_bank.py` | Question bank (50+ questions) |
+| `core/rng.py` | `tests/core/test_rng.py` + 2 extended files | RNG determinism, distributions |
+| `core/scoring.py` | `tests/core/test_scoring.py`, `test_scoring_variable.py` | Answer key generation, variable scoring |
+| `core/simulate.py` | `tests/core/test_simulate.py` + 2 extended files | Data simulation, utilities |
+| `core/types.py` | `tests/core/test_types.py`, `test_types_extended.py` | Type validation |
+| `core/utils.py` | `tests/core/test_utils.py`, `test_utils_extended.py` | Utility functions |
+| `core/validation.py` | `tests/core/test_validation.py` + 2 extended files | Answer validation, by-ID, scoring |
 | `llm/client.py` | `tests/llm/test_client.py` | LLM client & retry logic |
 | `llm/generator.py` | `tests/llm/test_generator.py` | Scenario generation |
-| `llm/guardrails.py` | `tests/llm/test_guardrails.py` | Parameter validation |
+| `llm/guardrails.py` | `tests/llm/test_guardrails.py`, `test_novelty_scoring.py` | Parameter validation, novelty scoring |
 | `llm/integration.py` | `tests/llm/test_integration.py` | LLM pipeline |
 | `llm/parser.py` | `tests/llm/test_parser.py` | JSON parsing |
 | `schemas/*.py` | `tests/schemas/test_*.py` | Pydantic validation |
-| `ui/streamlit_app.py` | `tests/ui/test_streamlit_app.py` | UI components |
+| `ui/streamlit_app.py` | `tests/ui/test_streamlit_app_enhanced.py` | Enhanced UI component tests |
 
 ---
 
@@ -173,7 +194,7 @@ testpaths = tests
 python_files = test_*.py
 python_classes = Test*
 python_functions = test_*
-addopts = 
+addopts =
     --verbose
     --strict-markers
     --tb=short
@@ -183,13 +204,17 @@ addopts =
     --cov=ui
     --cov-report=term-missing
     --cov-report=html
+    --cov-report=xml
+    -ra
 markers =
-    unit: Unit tests (fast, isolated)
-    integration: Integration tests (module interactions)
-    e2e: End-to-end tests (complete workflows)
-    slow: Slow tests (may take several seconds)
-    requires_api: Tests requiring real API calls
-    requires_env_var: Tests requiring environment variables
+    unit: Unit tests (fast, isolated function tests)
+    integration: Integration tests (module interaction tests)
+    e2e: End-to-end tests (complete workflow tests)
+    slow: Slow tests (may take several seconds or more)
+    requires_api: Tests requiring real API calls (OpenAI, etc.)
+    requires_env_var: Tests requiring specific environment variables
+    parametrize: Parametrized tests with multiple inputs
+    asyncio: Asynchronous tests requiring asyncio support
 ```
 
 ---
@@ -724,9 +749,9 @@ name: Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -882,7 +907,7 @@ pytest -m "not slow"
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: 2025-01-21  
+**Version**: 1.1
+**Last Updated**: 2026-02-10
 **Maintained By**: Development Team
 

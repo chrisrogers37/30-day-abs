@@ -66,7 +66,12 @@ This module contains all the data structures used for:
 - **Answer Keys**: AnswerKeyDTO for user evaluation
 - **Comparison**: AnalysisComparisonDTO, SensitivityAnalysisDTO
 
-#### 6. **`evaluation.py`** - User Response Scoring
+#### 6. **`complications.py`** - Experiment Complications
+- **ComplicationType**: Types of real-world complications for scenarios
+- **ComplicationDTO**: Complication details with impact levels
+- **Used by**: LLM generation for adding realism to scenarios
+
+#### 7. **`evaluation.py`** - User Response Scoring
 - **Evaluation**: EvaluationCriteriaDTO, EvaluationResponseDTO
 - **Scoring**: ScoringRubricDTO with grade thresholds
 - **Feedback**: FeedbackTemplateDTO for personalized feedback
@@ -102,24 +107,87 @@ This module contains all the data structures used for:
 
 ### **Business Context Schemas**
 
-#### Company Types
+#### Company Types (36 types across 5 industry categories)
 ```python
 class CompanyType(str, Enum):
-    SAAS = "SaaS"
-    ECOMMERCE = "E-commerce"
-    MEDIA = "Media"
-    FINTECH = "Fintech"
+    # Technology (5)
+    SAAS_B2B = "B2B SaaS"
+    SAAS_B2C = "B2C SaaS"
+    DEVELOPER_TOOLS = "Developer Tools"
+    CYBERSECURITY = "Cybersecurity"
+    AI_ML_PLATFORM = "AI/ML Platform"
+
+    # Consumer (11)
+    ECOMMERCE_DTC = "DTC E-commerce"
     MARKETPLACE = "Marketplace"
+    SUBSCRIPTION_BOX = "Subscription Box"
+    FOOD_DELIVERY = "Food Delivery"
+    TRAVEL = "Travel & Hospitality"
     GAMING = "Gaming"
+    STREAMING = "Streaming Media"
+    SOCIAL_NETWORK = "Social Network"
+    FITNESS_APP = "Fitness/Wellness App"
+    DATING_APP = "Dating App"
+    NEWS_MEDIA = "News & Media"
+
+    # Financial Services (6)
+    NEOBANK = "Neobank"
+    INVESTING_APP = "Investing Platform"
+    INSURANCE = "Insurtech"
+    PAYMENTS = "Payments"
+    LENDING = "Lending Platform"
+    CRYPTO = "Crypto/Web3"
+
+    # Healthcare (4)
+    TELEHEALTH = "Telehealth"
+    HEALTH_TRACKING = "Health Tracking"
+    PHARMACY = "Digital Pharmacy"
+    MENTAL_HEALTH = "Mental Health App"
+
+    # Industrial / B2B (4)
+    LOGISTICS = "Logistics"
+    HR_TECH = "HR Tech"
+    EDTECH = "EdTech"
+    REAL_ESTATE = "PropTech"
+    # ... plus legacy mappings for backward compatibility
 ```
 
-#### User Segments
+#### User Segments (29 segments across 4 dimension categories)
 ```python
 class UserSegment(str, Enum):
-    NEW_USERS = "new_users"
-    RETURNING_USERS = "returning_users"
-    PREMIUM_USERS = "premium_users"
-    ALL_USERS = "all_users"
+    # Lifecycle Stages (8)
+    NEW_VISITORS = "first-time visitors"
+    NEW_SIGNUPS = "new signups (< 7 days)"
+    ACTIVATED_USERS = "activated users"
+    ENGAGED_USERS = "weekly active users"
+    POWER_USERS = "power users (top 10%)"
+    AT_RISK_USERS = "at-risk users (inactive 14+ days)"
+    CHURNED_REACTIVATION = "churned users (win-back)"
+    DORMANT_USERS = "dormant users (30-90 days inactive)"
+
+    # Value Tiers (6)
+    FREE_TIER = "free tier users"
+    TRIAL_USERS = "trial users"
+    PAID_USERS = "paid subscribers"
+    ENTERPRISE = "enterprise accounts"
+    HIGH_LTV = "high-LTV customers"
+    LOW_LTV = "low-LTV customers"
+
+    # Behavioral Segments (7)
+    MOBILE_USERS = "mobile app users"
+    DESKTOP_USERS = "desktop users"
+    HIGH_INTENT = "high-intent searchers"
+    CART_ABANDONERS = "cart abandoners"
+    REPEAT_PURCHASERS = "repeat purchasers"
+    FIRST_TIME_BUYERS = "first-time buyers"
+    BROWSERS = "browsers (no purchase history)"
+
+    # Geographic Segments (4)
+    US_USERS = "US users"
+    INTERNATIONAL = "international users"
+    EMERGING_MARKETS = "emerging market users"
+    EU_USERS = "EU users"
+    # ... plus legacy mappings for backward compatibility
 ```
 
 ### **Statistical Design Schemas**

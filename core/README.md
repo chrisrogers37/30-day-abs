@@ -18,7 +18,7 @@ The core module provides:
 - **Deterministic**: All functions produce consistent results with same inputs
 - **Immutable Types**: All dataclasses are frozen for data integrity
 - **Mathematical Focus**: Only mathematical domain logic, no business context
-- **Testable**: 100% branch coverage on mathematical functions
+- **Testable**: ~89% average coverage on core mathematical modules (456 tests total)
 - **Reproducible**: Fixed seeds ensure consistent simulation results
 
 ## Module Contents
@@ -192,6 +192,28 @@ Answer key generation and comprehensive quiz result management:
 - **`export_answer_key_to_csv()`**: Export answer key to CSV file
 - **`export_quiz_results_to_csv()`**: Export quiz results to CSV file
 - **`_get_question_key()`**: Helper function to get question keys by number and type
+
+### `logging.py` - Centralized Logging System
+Unified logging configuration and quiz session tracking:
+
+- **`setup_logging()`**: Configure centralized logging with file rotation and clean terminal output
+- **`QuizSessionLogger`**: Structured logging for complete quiz session journeys
+  - Session start/end with timing metrics
+  - Scenario generation details
+  - Question-by-question progress logging
+  - Simulation and analysis result logging
+  - Visual separators and organized output sections
+- **Log file management**: Automatic log rotation and organized file structure (`logs/` directory)
+
+### `question_bank.py` - Question Bank
+Comprehensive question bank with 50+ questions across multiple categories:
+
+- **Design Questions**: MDE, sample size, duration, power analysis
+- **Analysis Questions**: Statistical test results, confidence intervals, p-values
+- **Planning Questions**: Pre-registration, guardrail metrics, test prioritization
+- **Interpretation Questions**: Practical vs. statistical significance, effect size interpretation
+- **Question metadata**: Difficulty levels (EASY, MEDIUM, HARD), skills-tested tags, complication types
+- **Variable scoring**: Different point values based on question difficulty and type
 
 ### `utils.py` - Mathematical Utilities
 Helper functions for calculations and formatting:

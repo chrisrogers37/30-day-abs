@@ -18,15 +18,19 @@ Welcome to the development documentation for 30 Day A/Bs! This directory contain
    - Coverage requirements and strategies
    - Mock strategies and CI/CD integration
 
-3. **[Coverage Plan](./COVERAGE_PLAN.md)** - Test coverage roadmap
-   - Detailed plan for achieving 90%+ core coverage
-   - Phase-by-phase implementation strategy
-   - Priority-based test development
+3. **[Enhancement Roadmap](./ENHANCEMENT_ROADMAP.md)** - Future feature planning
+   - User experience and platform expansion ideas
+   - Advanced statistical features roadmap
+   - Implementation phases and priorities
 
-4. **[Testing Summary](./TESTING_SUMMARY.md)** - Implementation results
-   - Final test metrics and coverage achieved
-   - Complete breakdown of testing infrastructure
-   - Achievement summary and next steps
+4. **[Code Review: Experimental Rigor](./CODE_REVIEW_EXPERIMENTAL_RIGOR.md)** - Statistical audit
+   - Detailed review of statistical implementations
+   - Educational content gap analysis
+   - Prioritized recommendations
+
+5. **[Scenario Variety Improvement Plan](./SCENARIO_VARIETY_IMPROVEMENT_PLAN.md)** - COMPLETED
+   - Expanded business context, parameter space, and question variety
+   - All 5 phases complete with 456 tests passing
 
 ## Quick Start
 
@@ -59,29 +63,32 @@ Welcome to the development documentation for 30 Day A/Bs! This directory contain
 - [ ] Reviewed the Testing Guide
 - [ ] All tests passing locally
 
-## Testing Achievement 🎉
+## Testing Achievement
 
-**Current Status**:
-- ✅ **283 tests passing** (100% pass rate)
-- ✅ **89% core module average coverage** (enterprise-grade!)
-- ✅ **288 total tests** created
-- ✅ **7,000+ lines of test code**
+**Current Status** (as of 2026-02-10):
+- ✅ **452 tests passing** (4 skipped, 0 failures)
+- ✅ **456 total tests** collected
+- ✅ **~89% core module average coverage**
+- ✅ **54% overall project coverage** (UI module untested via pytest)
+- ✅ **10,000+ lines of test code**
 
-See [Testing Summary](./TESTING_SUMMARY.md) for complete details.
+See the [Testing Guide](./TESTING_GUIDE.md) for full details on running and writing tests.
 
 ## Documentation Structure
 
 ```
 development_docs/
-├── README.md                    # This file - navigation guide
-├── DEVELOPMENT_GUIDE.md         # General development practices (719 lines)
-├── TESTING_GUIDE.md             # Testing standards and practices (889 lines)
-├── COVERAGE_PLAN.md             # Coverage completion roadmap
-└── TESTING_SUMMARY.md           # Implementation results and achievements
+├── README.md                                # This file - navigation guide
+├── DEVELOPMENT_GUIDE.md                     # General development practices (719 lines)
+├── TESTING_GUIDE.md                         # Testing standards and practices (889 lines)
+├── ENHANCEMENT_ROADMAP.md                   # Future feature roadmap
+├── CODE_REVIEW_EXPERIMENTAL_RIGOR.md        # Statistical rigor audit
+└── SCENARIO_VARIETY_IMPROVEMENT_PLAN.md     # Scenario variety work (COMPLETED)
 
 ../
 ├── core/README.md               # Core module documentation
 ├── llm/README.md                # LLM module documentation
+├── llm/prompts/README.md        # Prompt template documentation
 ├── schemas/README.md            # Schemas module documentation
 ├── ui/README.md                 # UI module documentation
 ├── tests/README.md              # Testing suite documentation
@@ -126,8 +133,8 @@ See [Testing Guide - Running Tests](./TESTING_GUIDE.md#running-tests) for detail
 ### Creating a Feature
 
 ```bash
-# Create feature branch
-git checkout develop
+# Create feature branch from main
+git checkout main
 git checkout -b feature/your-feature-name
 
 # Make changes, test, commit
@@ -135,6 +142,8 @@ git add .
 git commit -m "feat(module): description"
 git push -u origin feature/your-feature-name
 ```
+
+> **Note:** This project branches directly from `main`. There is no `develop` branch.
 
 See [Development Guide - Git Workflow](./DEVELOPMENT_GUIDE.md#git-workflow) for details.
 
@@ -202,15 +211,15 @@ See [Development Guide - Code Standards](./DEVELOPMENT_GUIDE.md#code-standards) 
 
 **Documentation**: Update docs with code changes
 
-**Git Flow**: Feature branches from develop, PR to merge
+**Git Flow**: Feature branches from main, PR to merge
 
 ### Testing
 
-**Comprehensive Coverage**: 89% on core modules
+**Comprehensive Coverage**: ~89% on core modules, 54% overall
 
 **Mock by Default**: Use mock LLM clients in tests
 
-**Fast Feedback**: Unit tests complete in ~15 minutes
+**Fast Feedback**: Full suite completes in ~29 minutes (456 tests)
 
 **Independent Tests**: Tests should not depend on each other
 
@@ -218,7 +227,7 @@ See [Development Guide - Code Standards](./DEVELOPMENT_GUIDE.md#code-standards) 
 
 See [CHANGELOG.md](../CHANGELOG.md) for detailed version history.
 
-**Current Version**: 1.4.0
+**Current Version**: 1.5.1
 
 Major milestones:
 - **1.0.0**: Initial release with core functionality
@@ -226,7 +235,8 @@ Major milestones:
 - **1.2.0**: Analysis section with rollout decisions
 - **1.3.0**: MIT license and Streamlit Cloud focus
 - **1.4.0**: Bug fixes and UX improvements
-- **1.5.0** (In Progress): Comprehensive testing suite
+- **1.5.0**: Comprehensive testing suite (456 tests, 89% core coverage)
+- **1.5.1**: Centralized logging system with quiz session tracking
 
 ## Contributing
 
@@ -234,7 +244,7 @@ We welcome contributions! Please follow these steps:
 
 1. **Read Documentation**: Start with this README and the guides
 2. **Check Issues**: Look for open issues or create a new one
-3. **Create Branch**: Feature branch from `develop`
+3. **Create Branch**: Feature branch from `main`
 4. **Make Changes**: Follow code standards and write tests
 5. **Submit PR**: Create pull request with description
 6. **Code Review**: Address review feedback
@@ -285,8 +295,6 @@ For questions or suggestions:
 
 ---
 
-**Last Updated**: 2025-01-22  
-**Version**: 2.0  
+**Last Updated**: 2026-02-10
+**Version**: 2.1
 **Maintained By**: Development Team
-
-Welcome aboard! 🚀

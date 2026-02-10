@@ -188,20 +188,20 @@ Consider aligning thresholds or adding this interpretation guide to the UI.
 ## Summary Recommendations
 
 ### High Priority
-1. **Fix Fisher's exact test fallback** - Currently defeats the purpose of automatic selection
-2. **Add multiple testing / Bonferroni questions** - Critical gap in educational content
-3. **Support unequal allocation properly** - Formula needs adjustment for non-50/50 splits
+1. **Fix Fisher's exact test fallback** — `PENDING` — Currently defeats the purpose of automatic selection
+2. **Add multiple testing / Bonferroni questions** — `PENDING` — Critical gap in educational content
+3. **Support unequal allocation properly** — `PENDING` — Formula needs adjustment for non-50/50 splits
 
 ### Medium Priority
-4. **Add sequential testing education** - Peeking bias is a common real-world problem
-5. **Use scipy.stats when available** - More accurate p-values for chi-square, Fisher's exact
-6. **Add CI bounds checking** - Prevent impossible confidence intervals
-7. **Sync simulation duration with design** - Use calculated days_required, not hardcoded 30
+4. **Add sequential testing education** — `PENDING` — Peeking bias is a common real-world problem
+5. **Use scipy.stats when available** — `PENDING` — More accurate p-values for chi-square, Fisher's exact
+6. **Add CI bounds checking** — `PENDING` — Prevent impossible confidence intervals
+7. **Sync simulation duration with design** — `PENDING` — Use calculated days_required, not hardcoded 30
 
 ### Low Priority (Polish)
-8. **Document pooled vs unpooled variance choice** - Educational transparency
-9. **Add Cohen's h interpretation guidelines** - Help users understand effect sizes
-10. **Note SUTVA assumptions** - Important caveat for advanced users
+8. **Document pooled vs unpooled variance choice** — `PENDING` — Educational transparency
+9. **Add Cohen's h interpretation guidelines** — `PENDING` — Help users understand effect sizes
+10. **Note SUTVA assumptions** — `PENDING` — Important caveat for advanced users
 
 ---
 

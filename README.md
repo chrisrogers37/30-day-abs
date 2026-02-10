@@ -22,9 +22,9 @@ This project was born out of a need to practice experimental design and statisti
 
 The easiest way to use 30 Day A/Bs is through Streamlit Cloud:
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-name.streamlit.app)
+**Note**: Streamlit Cloud deployment URL has not yet been configured. Once deployed, a badge link will be added here.
 
-Simply click the badge above to start practicing A/B testing scenarios immediately!
+To try the app, follow the [Local Development](#local-development) instructions below.
 
 ### 📱 What You'll Experience
 
