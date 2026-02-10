@@ -8,6 +8,9 @@ and generates detailed answer keys for user evaluation.
 import math
 from typing import Dict, Tuple, Optional
 
+from scipy.stats import fisher_exact as scipy_fisher_exact
+from scipy.stats import chi2
+
 from .types import SimResult, AnalysisResult, BusinessImpact, TestQuality, DesignParams, StatisticalTestSelection
 from .design import _get_z_score
 
@@ -273,46 +276,38 @@ def _chi_square_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
 
 def _fisher_exact_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
     """
-    Perform Fisher's exact test (simplified implementation).
-    
+    Perform Fisher's exact test using scipy.
+
     Args:
         sim_result: Simulation results
         alpha: Significance level
-        
+
     Returns:
         AnalysisResult with Fisher's exact test results
     """
-    # For large samples, approximate with chi-square
-    if sim_result.control_n + sim_result.treatment_n > 100:
-        return _chi_square_test(sim_result, alpha)
-    
-    # Simplified Fisher's exact test implementation
-    # In production, use scipy.stats.fisher_exact
     n1, x1 = sim_result.control_n, sim_result.control_conversions
     n2, x2 = sim_result.treatment_n, sim_result.treatment_conversions
-    
-    # Calculate p-value using hypergeometric distribution approximation
-    p_value = _fisher_exact_p_value(x1, n1, x2, n2)
-    
-    # Calculate confidence interval
+
+    # Build 2x2 contingency table
+    table = [[x1, n1 - x1],
+             [x2, n2 - x2]]
+
+    odds_ratio, p_value = scipy_fisher_exact(table, alternative='two-sided')
+    odds_ratio = float(odds_ratio)
+    p_value = float(p_value)
+
+    # Calculate confidence interval for difference
     p1 = x1 / n1 if n1 > 0 else 0
     p2 = x2 / n2 if n2 > 0 else 0
     ci_lower, ci_upper = _calculate_confidence_interval(p1, p2, n1, n2, alpha)
-    
-    # Determine significance
+
     significant = p_value < alpha
-    
-    # Calculate effect size
     effect_size = _calculate_effect_size(p1, p2)
-    
-    # Calculate achieved power
     power_achieved = _calculate_achieved_power(p1, p2, n1, n2, alpha, "two_tailed")
-    
-    # Generate recommendation
     recommendation = _generate_recommendation(significant, p_value, effect_size, power_achieved)
-    
+
     return AnalysisResult(
-        test_statistic=0.0,  # Fisher's exact doesn't have a traditional test statistic
+        test_statistic=odds_ratio,
         p_value=p_value,
         confidence_interval=(ci_lower, ci_upper),
         confidence_level=1 - alpha,
@@ -445,68 +440,16 @@ def _calculate_achieved_power(p1: float, p2: float, n1: int, n2: int,
 
 def _chi_square_p_value(chi_square: float, df: int) -> float:
     """
-    Approximate p-value for chi-square statistic.
-    
+    Calculate p-value for chi-square statistic using scipy.
+
     Args:
         chi_square: Chi-square statistic
         df: Degrees of freedom
-        
+
     Returns:
-        P-value
+        P-value (survival function)
     """
-    # Simplified approximation for df=1
-    if df == 1:
-        # For df=1, chi-square is approximately z^2
-        z = math.sqrt(chi_square)
-        return 2 * (1 - _normal_cdf(z))
-    
-    # For other df, use approximation
-    return 1 - _chi_square_cdf(chi_square, df)
-
-
-def _chi_square_cdf(chi_square: float, df: int) -> float:
-    """
-    Approximate CDF for chi-square distribution.
-    
-    Args:
-        chi_square: Chi-square statistic
-        df: Degrees of freedom
-        
-    Returns:
-        Cumulative probability
-    """
-    # Simplified approximation
-    if df == 1:
-        return _normal_cdf(math.sqrt(chi_square))
-    
-    # For df > 1, use approximation
-    return 1 - math.exp(-chi_square / 2)
-
-
-def _fisher_exact_p_value(x1: int, n1: int, x2: int, n2: int) -> float:
-    """
-    Approximate p-value for Fisher's exact test.
-    
-    Args:
-        x1: Control group conversions
-        n1: Control group sample size
-        x2: Treatment group conversions
-        n2: Treatment group sample size
-        
-    Returns:
-        P-value
-    """
-    # Simplified implementation - in production use scipy.stats.fisher_exact
-    # This is a rough approximation
-    p1 = x1 / n1 if n1 > 0 else 0
-    p2 = x2 / n2 if n2 > 0 else 0
-    
-    # Use chi-square approximation for simplicity
-    return _chi_square_p_value(
-        (x1 - n1 * p1) ** 2 / (n1 * p1 * (1 - p1)) + 
-        (x2 - n2 * p2) ** 2 / (n2 * p2 * (1 - p2)), 
-        df=1
-    )
+    return float(chi2.sf(chi_square, df))
 
 
 def _generate_recommendation(significant: bool, p_value: float, 
