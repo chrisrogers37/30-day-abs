@@ -8,7 +8,9 @@ calculations, and evaluation scoring.
 import math
 from typing import Dict, List, Optional, Tuple, Union
 
-from .design import _get_z_score
+from .logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def relative_lift_to_absolute(control_rate: float, relative_lift_pct: float) -> float:
@@ -119,8 +121,8 @@ def calculate_sample_size_for_revenue_detection(min_revenue_impact: float,
     p2 = p1 + min_conversion_impact
     
     # Calculate z-scores
-    z_alpha = _get_z_score(alpha, "two_tailed")
-    z_beta = _get_z_score(1 - power, "two_tailed")
+    z_alpha = get_z_score(alpha, "two_tailed")
+    z_beta = get_z_score(1 - power, "two_tailed")
     
     # Calculate pooled proportion
     p_pooled = (p1 + p2) / 2
@@ -236,7 +238,7 @@ def calculate_confidence_interval_for_proportion(p: float, n: int,
     
     # Calculate z-score for confidence level
     alpha = 1 - confidence_level
-    z_score = _get_z_score(alpha, "two_tailed")
+    z_score = get_z_score(alpha, "two_tailed")
     
     # Calculate margin of error
     margin_of_error = z_score * se
@@ -272,7 +274,7 @@ def calculate_confidence_interval_for_difference(p1: float, p2: float,
     
     # Calculate z-score for confidence level
     alpha = 1 - confidence_level
-    z_score = _get_z_score(alpha, "two_tailed")
+    z_score = get_z_score(alpha, "two_tailed")
     
     # Calculate margin of error
     margin_of_error = z_score * se
@@ -305,54 +307,122 @@ def calculate_power_for_proportions(p1: float, p2: float, n: int,
     se = math.sqrt(p1 * (1 - p1) / n + p2 * (1 - p2) / n)
     
     # Calculate critical value
-    z_alpha = _get_z_score(alpha, "two_tailed")
+    z_alpha = get_z_score(alpha, "two_tailed")
     
     # Calculate z-score for the effect
     effect_size = abs(p2 - p1)
     z_effect = effect_size / se if se > 0 else 0
     
     # Calculate power
-    power = 1 - _normal_cdf(z_alpha - z_effect)
+    power = 1 - normal_cdf(z_alpha - z_effect)
     
     return min(max(power, 0.0), 1.0)
 
 
-def _normal_cdf(z: float) -> float:
+def get_z_score(alpha: float, direction: str) -> float:
     """
-    Approximate cumulative distribution function for standard normal distribution.
-    
+    Get z-score for given alpha level and test direction.
+
+    Args:
+        alpha: Significance level
+        direction: One-tailed or two-tailed test
+
+    Returns:
+        Z-score corresponding to the alpha level
+    """
+    if direction == "two_tailed":
+        alpha = alpha / 2
+
+    # For common alpha values, use exact values
+    if abs(alpha - 0.05) < 1e-6:
+        z_score = 1.96 if direction == "two_tailed" else 1.645
+    elif abs(alpha - 0.01) < 1e-6:
+        z_score = 2.576 if direction == "two_tailed" else 2.326
+    elif abs(alpha - 0.1) < 1e-6:
+        z_score = 1.645 if direction == "two_tailed" else 1.282
+    else:
+        # For other values, use scipy.stats.norm.ppf
+        try:
+            from scipy.stats import norm
+            z_score = norm.ppf(1 - alpha)
+        except ImportError:
+            # Fallback approximation if scipy not available
+            if alpha < 0.01:
+                z_score = 2.576
+            elif alpha < 0.05:
+                z_score = 1.96
+            elif alpha < 0.1:
+                z_score = 1.645
+            else:
+                z_score = 1.282
+
+    logger.debug(f"Z-score calculation: alpha={alpha:.6f}, direction={direction}, z_score={z_score:.6f}")
+
+    return z_score
+
+
+def normal_cdf(z: float) -> float:
+    """
+    Cumulative distribution function for standard normal distribution.
+
     Args:
         z: Z-score
-        
+
     Returns:
         Cumulative probability
     """
     return 0.5 * (1 + math.erf(z / math.sqrt(2)))
 
 
-def calculate_minimum_detectable_effect(p1: float, n: int, alpha: float = 0.05, 
-                                      power: float = 0.8) -> float:
+def calculate_achieved_power(p1: float, p2: float, n1: int, n2: int,
+                            alpha: float, direction: str) -> float:
     """
-    Calculate minimum detectable effect for given sample size and power.
-    
+    Calculate achieved power for comparing two proportions.
+
+    Args:
+        p1: Control group proportion
+        p2: Treatment group proportion
+        n1: Control group sample size
+        n2: Treatment group sample size
+        alpha: Significance level
+        direction: Test direction ("two_tailed" or "one_tailed")
+
+    Returns:
+        Achieved power (probability of detecting the effect)
+    """
+    se = math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
+    z_alpha = get_z_score(alpha, direction)
+    effect_size = abs(p2 - p1)
+    z_effect = effect_size / se if se > 0 else 0
+    power = 1 - normal_cdf(z_alpha - z_effect)
+    return min(max(power, 0.0), 1.0)
+
+
+def calculate_minimum_detectable_effect(p1: float, n: int, alpha: float = 0.05,
+                                       power: float = 0.8,
+                                       direction: str = "two_tailed") -> float:
+    """
+    Calculate the minimum detectable effect for given sample size and power.
+
     Args:
         p1: Baseline proportion
         n: Sample size per group
         alpha: Significance level
         power: Desired power
-        
+        direction: Test direction
+
     Returns:
         Minimum detectable effect as absolute difference
     """
-    z_alpha = _get_z_score(alpha, "two_tailed")
-    z_beta = _get_z_score(1 - power, "two_tailed")
-    
+    z_alpha = get_z_score(alpha, direction)
+    z_beta = get_z_score(1 - power, "one_tailed")
+
     # Standard error for equal sample sizes
     se = math.sqrt(2 * p1 * (1 - p1) / n)
-    
+
     # Minimum detectable effect
     mde = (z_alpha + z_beta) * se
-    
+
     return mde
 
 
@@ -371,8 +441,8 @@ def calculate_required_sample_size_for_power(p1: float, p2: float,
     Returns:
         Required sample size per group
     """
-    z_alpha = _get_z_score(alpha, "two_tailed")
-    z_beta = _get_z_score(1 - power, "two_tailed")
+    z_alpha = get_z_score(alpha, "two_tailed")
+    z_beta = get_z_score(1 - power, "two_tailed")
     
     # Calculate pooled proportion
     p_pooled = (p1 + p2) / 2
@@ -472,7 +542,7 @@ def calculate_conversion_rate_confidence_interval(p: float, n: int,
     
     # Calculate z-score for confidence level
     alpha = 1 - confidence_level
-    z_score = _get_z_score(alpha, "two_tailed")
+    z_score = get_z_score(alpha, "two_tailed")
     
     # Calculate margin of error
     margin_of_error = z_score * se
