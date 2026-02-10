@@ -25,17 +25,17 @@ The main prompt template for generating AB test scenarios. This comprehensive pr
 7. **Quality Guidelines**: Realism and consistency requirements
 8. **Examples**: Good and bad scenario examples
 
-**Parameter Constraints:**
-- `baseline_conversion_rate`: 0.001 to 0.5 (0.1% to 50%)
-- `mde_absolute`: 0.001 to 0.1 (0.1% to 10% percentage points)
-- `target_lift_pct`: -0.5 to 0.5 (-50% to +50%)
-- `alpha`: 0.01 to 0.1 (1% to 10%)
-- `power`: 0.7 to 0.95 (70% to 95%)
-- `expected_daily_traffic`: 500 to 5,000
+**Parameter Constraints** (enforced by `llm/guardrails.py`):
+- `baseline_conversion_rate`: 0.001 to 0.8 (0.1% to 80%)
+- `mde_absolute`: 0.001 to 0.2 (0.1% to 20% percentage points)
+- `target_lift_pct`: -0.5 to 1.0 (-50% to +100%)
+- `alpha`: 0.001 to 0.2 (0.1% to 20%)
+- `power`: 0.5 to 0.99 (50% to 99%)
+- `expected_daily_traffic`: 100 to 10,000,000 (with traffic tiers from Early Stage to Enterprise)
 
 **Business Context Support:**
-- Company Types: SaaS, E-commerce, Media, Fintech, Marketplace, Gaming
-- User Segments: new_users, returning_users, premium_users, all_users
+- Company Types: 36 types across 5 industry categories (Technology, Consumer, Financial, Healthcare, Industrial/B2B) — see `schemas/shared.py` `CompanyType` enum
+- User Segments: 29 segments across 4 dimension categories (Lifecycle, Value Tier, Behavioral, Geographic) — see `schemas/shared.py` `UserSegment` enum
 - Primary KPIs: conversion_rate, click_through_rate, revenue_per_user, engagement_rate
 - Units: visitor, session, user, impression
 

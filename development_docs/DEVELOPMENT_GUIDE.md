@@ -171,21 +171,21 @@ streamlit run ui/streamlit_app.py
 
 ### Branch Strategy
 
-We use Git Flow branching strategy:
+We use a simplified branching strategy based off `main`:
 
-- **`main`**: Production-ready code
-- **`develop`**: Integration branch for features
-- **`feature/*`**: New features
+- **`main`**: Production-ready code (primary branch)
+- **`feature/*`**: New features (branch from main)
 - **`bugfix/*`**: Bug fixes
-- **`release/*`**: Release preparation
 - **`hotfix/*`**: Production hotfixes
+
+> **Note:** There is no `develop` branch. All feature branches are created from and merged back into `main`.
 
 ### Creating a New Feature
 
 ```bash
-# Create feature branch from develop
-git checkout develop
-git pull origin develop
+# Create feature branch from main
+git checkout main
+git pull origin main
 git checkout -b feature/your-feature-name
 
 # Make changes and commit
@@ -201,13 +201,12 @@ git push -u origin feature/your-feature-name
 ### Development Cycle
 
 1. **Plan**: Review issue or feature requirements
-2. **Branch**: Create feature branch from `develop`
+2. **Branch**: Create feature branch from `main`
 3. **Code**: Implement feature following code standards
 4. **Test**: Write and run tests (aim for 80%+ coverage)
 5. **Document**: Update documentation and CHANGELOG
 6. **Review**: Create PR and request code review
-7. **Merge**: Merge to `develop` after approval
-8. **Deploy**: Merge to `main` for release
+7. **Merge**: Merge to `main` after approval
 
 ### Local Development Commands
 
@@ -517,7 +516,7 @@ git commit -m "test(core): add unit tests for sample size calculation"
 
 ### Pull Request Process
 
-1. **Create Branch**: Create feature branch from `develop`
+1. **Create Branch**: Create feature branch from `main`
 2. **Make Changes**: Implement feature with tests
 3. **Update Documentation**: Update relevant docs and CHANGELOG
 4. **Run Tests**: Ensure all tests pass locally
@@ -577,13 +576,12 @@ Examples:
 1. **Update Version**: Update version in relevant files
 2. **Update CHANGELOG**: Document all changes
 3. **Run Tests**: Ensure all tests pass
-4. **Create Release Branch**: `git checkout -b release/1.2.0`
+4. **Create Release Branch**: `git checkout -b release/1.2.0` (from `main`)
 5. **Final Testing**: Run full test suite
 6. **Merge to Main**: Merge release branch to `main`
 7. **Tag Release**: Create Git tag `git tag v1.2.0`
 8. **Deploy**: Deploy to Streamlit Cloud
-9. **Merge Back**: Merge `main` back to `develop`
-10. **Announce**: Update README and announce release
+9. **Announce**: Update README and announce release
 
 ### CHANGELOG Format
 
@@ -712,7 +710,7 @@ import third_party_library  # type: ignore
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: 2025-01-21  
+**Version**: 1.1
+**Last Updated**: 2026-02-10
 **Maintained By**: Development Team
 

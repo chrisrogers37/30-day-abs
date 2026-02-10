@@ -24,27 +24,45 @@ pytest tests/core/          # Core module tests only
 
 ```
 tests/
-├── conftest.py                      # Shared pytest fixtures
-├── pytest.ini                       # Pytest configuration (in project root)
+├── __init__.py
+├── conftest.py                      # Shared pytest fixtures (20+ fixtures)
 │
-├── core/                            # Core module tests (9 modules)
+├── core/                            # Core module tests (27 test files)
 │   ├── test_analyze.py              # Statistical analysis tests
+│   ├── test_analyze_business.py     # Business impact analysis tests
+│   ├── test_analyze_extended.py     # Extended analysis edge cases
+│   ├── test_analyze_statistical_tests.py  # Chi-square, Fisher's exact tests
 │   ├── test_design.py               # Sample size calculation tests
+│   ├── test_design_extended.py      # Extended design edge cases
+│   ├── test_design_helpers.py       # Design helper function tests
+│   ├── test_logging.py              # Centralized logging tests
+│   ├── test_logging_quiz.py         # Quiz session logging tests
+│   ├── test_question_bank.py        # Question bank tests (50+ questions)
 │   ├── test_rng.py                  # RNG determinism tests
+│   ├── test_rng_advanced.py         # Advanced RNG distribution tests
+│   ├── test_rng_extended.py         # Extended RNG edge cases
 │   ├── test_scoring.py              # Answer key & scoring tests
+│   ├── test_scoring_variable.py     # Variable scoring tests
 │   ├── test_simulate.py             # Data simulation tests
+│   ├── test_simulate_extended.py    # Extended simulation tests
+│   ├── test_simulate_utilities.py   # Simulation utility function tests
 │   ├── test_types.py                # Domain type tests
+│   ├── test_types_extended.py       # Extended type tests
 │   ├── test_utils.py                # Utility function tests
-│   └── test_validation.py           # Answer validation tests
+│   ├── test_utils_extended.py       # Extended utility tests
+│   ├── test_validation.py           # Answer validation tests
+│   ├── test_validation_by_id.py     # Validation by question ID tests
+│   └── test_validation_scoring.py   # Validation scoring integration tests
 │
-├── llm/                             # LLM integration tests (5 modules)
+├── llm/                             # LLM integration tests (6 test files)
 │   ├── test_client.py               # LLM client tests
 │   ├── test_generator.py            # Scenario generation tests
 │   ├── test_guardrails.py           # Parameter validation tests
 │   ├── test_integration.py          # LLM pipeline tests
+│   ├── test_novelty_scoring.py      # Novelty scoring tests
 │   └── test_parser.py               # JSON parsing tests
 │
-├── schemas/                         # Schema validation tests (6 modules)
+├── schemas/                         # Schema validation tests (6 test files)
 │   ├── test_analyze.py              # Analysis schema tests
 │   ├── test_design.py               # Design schema tests
 │   ├── test_evaluation.py           # Evaluation schema tests
@@ -53,7 +71,7 @@ tests/
 │   └── test_simulate.py             # Simulation schema tests
 │
 ├── ui/                              # UI component tests
-│   └── test_streamlit_app_enhanced.py
+│   └── test_streamlit_app_enhanced.py  # Enhanced Streamlit tests
 │
 ├── integration/                     # E2E integration tests
 │   ├── test_complete_workflow.py    # Full quiz flow tests
@@ -75,7 +93,9 @@ tests/
 │   ├── factories.py                 # Object factories
 │   └── mocks.py                     # Mock objects
 │
-└── test_notebooks.py                # Notebook template tests
+├── test_basic.py                    # Quick smoke tests
+├── test_notebooks.py                # Notebook template tests
+└── test_streamlit_app.py            # Basic Streamlit import/functionality tests
 ```
 
 ## Test Categories

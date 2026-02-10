@@ -16,7 +16,7 @@ After completing the comprehensive testing suite (v1.5.0) and centralized loggin
 **Strengths**: Solid core functionality, comprehensive testing, good logging
 **Gaps**: Limited user engagement features, no progress tracking, basic UI
 
-### 1.1 User Authentication & Progress Tracking
+### 1.1 User Authentication & Progress Tracking — `PENDING`
 **Impact**: 🔴 Critical | **Effort**: 2-3 weeks | **Value**: High user retention
 
 **Features**:
@@ -72,7 +72,7 @@ CREATE TABLE user_progress (
 );
 ```
 
-### 1.2 Enhanced UI/UX
+### 1.2 Enhanced UI/UX — `PENDING`
 **Impact**: 🟡 High | **Effort**: 1-2 weeks | **Value**: User engagement
 
 **Features**:
@@ -97,7 +97,7 @@ ui/components/
 
 ## 2. 🟡 HIGH: Advanced Statistical Features
 
-### 2.1 Multi-Metric Analysis
+### 2.1 Multi-Metric Analysis — `PENDING`
 **Impact**: 🟡 High | **Effort**: 2-3 weeks | **Value**: Educational depth
 
 **Current Limitation**: Only conversion rate analysis
@@ -121,8 +121,10 @@ core/advanced/
 └── time_series.py   # Time-based metrics
 ```
 
-### 2.2 Advanced Statistical Tests
+### 2.2 Advanced Statistical Tests — `PENDING`
 **Impact**: 🟡 High | **Effort**: 1-2 weeks | **Value**: Statistical rigor
+
+> **Note**: Chi-square and Fisher's exact test selection logic already exists in `core/analyze.py` (automatic test selection with `StatisticalTestSelection`), but the implementations are partial. Mann-Whitney, sequential testing, and Bayesian methods remain unimplemented.
 
 **Features**:
 - Mann-Whitney U test for non-parametric data
@@ -142,7 +144,7 @@ core/statistics/
 └── effect_size.py   # Effect size calculations
 ```
 
-### 2.3 Multi-Armed Bandits
+### 2.3 Multi-Armed Bandits — `PENDING`
 **Impact**: 🟢 Medium | **Effort**: 2-3 weeks | **Value**: Modern experimentation
 
 **Features**:
@@ -156,7 +158,7 @@ core/statistics/
 
 ## 3. 🟡 HIGH: Platform & Integration
 
-### 3.1 REST API Layer
+### 3.1 REST API Layer — `PENDING`
 **Impact**: 🟡 High | **Effort**: 2-3 weeks | **Value**: Integration capabilities
 
 **Current Limitation**: Streamlit-only interface
@@ -201,7 +203,7 @@ POST /api/v1/analysis/analyze
 }
 ```
 
-### 3.2 Database Integration
+### 3.2 Database Integration — `PENDING`
 **Impact**: 🟡 High | **Effort**: 1-2 weeks | **Value**: Data persistence
 
 **Database Options**:
@@ -220,7 +222,7 @@ database/
 └── repositories.py  # Data access layer
 ```
 
-### 3.3 Caching & Performance
+### 3.3 Caching & Performance — `PENDING`
 **Impact**: 🟢 Medium | **Effort**: 1 week | **Value**: Performance optimization
 
 **Features**:
@@ -234,7 +236,7 @@ database/
 
 ## 4. 🟢 MEDIUM: Educational Enhancements
 
-### 4.1 Adaptive Learning System
+### 4.1 Adaptive Learning System — `PENDING`
 **Impact**: 🟢 Medium | **Effort**: 2-3 weeks | **Value**: Personalized education
 
 **Features**:
@@ -255,11 +257,11 @@ education/
 └── analytics.py     # Learning analytics
 ```
 
-### 4.2 Advanced Question Types
+### 4.2 Advanced Question Types — `PENDING`
 **Impact**: 🟢 Medium | **Effort**: 1-2 weeks | **Value**: Educational depth
 
-**Current**: 6 design + 7 analysis questions
-**Enhancement**: Expanded question bank
+**Current**: 50+ questions across design, analysis, planning, and interpretation categories (via `core/question_bank.py`)
+**Enhancement**: Further expansion with advanced topics
 
 **New Question Types**:
 - **Statistical Power**: "What's the minimum detectable effect?"
@@ -268,7 +270,7 @@ education/
 - **Business Impact**: "Calculate the revenue impact of this test"
 - **Risk Assessment**: "What are the risks of this experimental design?"
 
-### 4.3 Interactive Tutorials
+### 4.3 Interactive Tutorials — `PENDING`
 **Impact**: 🟢 Medium | **Effort**: 2-3 weeks | **Value**: Onboarding experience
 
 **Features**:
@@ -282,7 +284,7 @@ education/
 
 ## 5. 🟢 MEDIUM: Advanced Analytics & Reporting
 
-### 5.1 Comprehensive Analytics Dashboard
+### 5.1 Comprehensive Analytics Dashboard — `PENDING`
 **Impact**: 🟢 Medium | **Effort**: 2-3 weeks | **Value**: User insights
 
 **Features**:
@@ -303,7 +305,7 @@ analytics/
 └── reports.py      # Report generation
 ```
 
-### 5.2 Advanced Data Export
+### 5.2 Advanced Data Export — `PENDING`
 **Impact**: 🟢 Medium | **Effort**: 1 week | **Value**: Data portability
 
 **Current**: CSV export only
@@ -316,7 +318,7 @@ analytics/
 - **PDF**: Formatted reports
 - **PowerBI**: Direct integration
 
-### 5.3 Real-time Collaboration
+### 5.3 Real-time Collaboration — `PENDING`
 **Impact**: 🟢 Medium | **Effort**: 3-4 weeks | **Value**: Team learning
 
 **Features**:
@@ -330,7 +332,7 @@ analytics/
 
 ## 6. ⚪ LOW: Advanced Features
 
-### 6.1 Machine Learning Integration
+### 6.1 Machine Learning Integration — `PENDING`
 **Impact**: ⚪ Low | **Effort**: 3-4 weeks | **Value**: Future-proofing
 
 **Features**:
@@ -340,7 +342,7 @@ analytics/
 - Intelligent content recommendations
 - Anomaly detection in user behavior
 
-### 6.2 Mobile Application
+### 6.2 Mobile Application — `PENDING`
 **Impact**: ⚪ Low | **Effort**: 4-6 weeks | **Value**: Accessibility
 
 **Features**:
@@ -350,7 +352,7 @@ analytics/
 - Mobile-optimized UI
 - Cross-platform synchronization
 
-### 6.3 Enterprise Features
+### 6.3 Enterprise Features — `PENDING`
 **Impact**: ⚪ Low | **Effort**: 4-6 weeks | **Value**: Commercial viability
 
 **Features**:
@@ -364,7 +366,7 @@ analytics/
 
 ## Implementation Roadmap
 
-### Phase 1: Foundation (Next 2-3 months)
+### Phase 1: Foundation (Next 2-3 months) — `PENDING`
 **Priority**: User Experience & Core Features
 
 1. **User Authentication System** (2-3 weeks)
@@ -391,7 +393,7 @@ analytics/
 - REST API for external integration
 - Enhanced user experience
 
-### Phase 2: Advanced Features (3-6 months)
+### Phase 2: Advanced Features (3-6 months) — `PENDING`
 **Priority**: Statistical Depth & Educational Value
 
 1. **Multi-Metric Analysis** (2-3 weeks)
@@ -414,7 +416,7 @@ analytics/
 - Personalized learning experience
 - Advanced educational features
 
-### Phase 3: Platform Expansion (6-12 months)
+### Phase 3: Platform Expansion (6-12 months) — `PENDING`
 **Priority**: Integration & Advanced Features
 
 1. **Analytics Dashboard** (2-3 weeks)
@@ -561,7 +563,6 @@ This roadmap provides a clear path from the current state to a world-class exper
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-01-22  
-**Next Review**: 2025-02-22  
+**Document Version**: 1.1
+**Last Updated**: 2026-02-10
 **Maintained By**: Development Team
