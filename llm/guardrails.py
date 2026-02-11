@@ -344,7 +344,7 @@ class LLMGuardrails:
             # Determine overall validity
             result.is_valid = len(result.errors) == 0
             
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, AttributeError) as e:
             logger.error(f"Error in guardrail validation: {e}")
             result.is_valid = False
             result.errors.append(f"Validation error: {str(e)}")

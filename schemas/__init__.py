@@ -18,6 +18,6 @@ from .evaluation import *
 try:
     from .scenario import ScenarioResponseDTO
     ScenarioResponseDTO.model_rebuild()
-except Exception:
-    # If rebuild fails, it's not critical for basic functionality
+except (AttributeError, TypeError):
+    # model_rebuild() can fail if forward references are unresolvable
     pass

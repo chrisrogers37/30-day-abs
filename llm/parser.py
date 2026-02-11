@@ -269,10 +269,10 @@ class LLMOutputParser:
             if result.warnings:
                 logger.warning(f"Business logic warnings: {result.warnings}")
             
-        except Exception as e:
+        except (json.JSONDecodeError, ValidationError, KeyError, ValueError, TypeError) as e:
             logger.error(f"Unexpected error parsing LLM response: {e}")
             result.errors.append(f"Unexpected parsing error: {str(e)}")
-        
+
         return result
     
     def _extract_json(self, content: str) -> Optional[str]:
@@ -358,9 +358,9 @@ class LLMOutputParser:
             
             return brace_count == 0
             
-        except Exception:
+        except (ValueError, TypeError, IndexError):
             return False
-    
+
     def _parse_json(self, json_content: str) -> Optional[Dict]:
         """Parse JSON content with error handling."""
         try:
@@ -372,7 +372,7 @@ class LLMOutputParser:
         except json.JSONDecodeError as e:
             self.parsing_errors.append(f"JSON parsing error: {str(e)}")
             return None
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             self.parsing_errors.append(f"Unexpected JSON error: {str(e)}")
             return None
     
@@ -421,7 +421,7 @@ class LLMOutputParser:
             
             return response_dto
             
-        except Exception as e:
+        except (ValidationError, ValueError, TypeError, KeyError) as e:
             self.validation_errors.append(f"Schema validation error: {str(e)}")
             return None
     
@@ -470,7 +470,7 @@ class LLMOutputParser:
             elif daily_traffic > 1000000:
                 result.warnings.append(f"Daily traffic ({daily_traffic}) may be unrealistically high")
             
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, ZeroDivisionError) as e:
             result.warnings.append(f"Business logic validation error: {str(e)}")
     
     def get_parsing_suggestions(self, errors: List[str]) -> List[str]:

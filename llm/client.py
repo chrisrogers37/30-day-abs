@@ -70,6 +70,7 @@ from typing import Dict, List, Optional, Union
 from dataclasses import dataclass
 from enum import Enum
 
+import openai
 from openai import AsyncOpenAI
 
 from core.logging import get_logger
@@ -384,7 +385,8 @@ class LLMClient:
                     retry_count=attempt
                 )
                 
-            except Exception as e:
+            except (openai.APIError, openai.APIConnectionError, openai.APITimeoutError,
+                    openai.RateLimitError, openai.AuthenticationError) as e:
                 last_error = e
                 logger.warning(f"LLM call failed (attempt {attempt + 1}): {e}")
                 
