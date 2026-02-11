@@ -53,29 +53,30 @@ class TestDesignInternalHelpers:
     
     @pytest.mark.unit
     def test_calculate_achieved_power_internal(self):
-        """Test achieved power calculation (internal function)."""
-        from core.design import _calculate_achieved_power
-        
-        # Test with reasonable parameters
-        power = _calculate_achieved_power(
+        """Test achieved power calculation."""
+        from core.utils import calculate_achieved_power
+
+        # Test with reasonable parameters (n1=n2=5000)
+        power = calculate_achieved_power(
             p1=0.05,
             p2=0.06,
-            n=5000,
+            n1=5000,
+            n2=5000,
             alpha=0.05,
             direction="two_tailed"
         )
-        
+
         assert 0 <= power <= 1
         # With large sample and noticeable effect, should have good power
         assert power > 0.5
-    
+
     @pytest.mark.unit
     def test_normal_cdf_calculation(self):
-        """Test normal CDF approximation."""
-        from core.design import _normal_cdf
-        
+        """Test normal CDF calculation."""
+        from core.utils import normal_cdf
+
         # Test standard normal values
-        assert 0.48 < _normal_cdf(0) < 0.52  # Should be ~0.5 at z=0
-        assert _normal_cdf(-3) < 0.01  # Should be small for z=-3
-        assert _normal_cdf(3) > 0.99  # Should be large for z=3
+        assert 0.48 < normal_cdf(0) < 0.52  # Should be ~0.5 at z=0
+        assert normal_cdf(-3) < 0.01  # Should be small for z=-3
+        assert normal_cdf(3) > 0.99  # Should be large for z=3
 

@@ -12,7 +12,13 @@ from scipy.stats import fisher_exact as scipy_fisher_exact
 from scipy.stats import chi2
 
 from .types import SimResult, AnalysisResult, BusinessImpact, TestQuality, DesignParams, StatisticalTestSelection
-from .design import _get_z_score
+from .utils import (
+    get_z_score,
+    normal_cdf,
+    calculate_achieved_power,
+    calculate_effect_size_cohens_h,
+    calculate_confidence_interval_for_difference,
+)
 
 
 def select_statistical_test(sim_result: SimResult) -> StatisticalTestSelection:
@@ -178,16 +184,16 @@ def _two_proportion_z_test(sim_result: SimResult, alpha: float,
     p_value = _calculate_p_value(z_statistic, direction)
     
     # Calculate confidence interval for difference
-    ci_lower, ci_upper = _calculate_confidence_interval(p1, p2, n1, n2, alpha)
+    ci_lower, ci_upper = calculate_confidence_interval_for_difference(p1, p2, n1, n2, confidence_level=1 - alpha)
     
     # Determine significance
     significant = p_value < alpha
     
     # Calculate effect size (Cohen's h)
-    effect_size = _calculate_effect_size(p1, p2)
+    effect_size = calculate_effect_size_cohens_h(p1, p2)
     
     # Calculate achieved power
-    power_achieved = _calculate_achieved_power(p1, p2, n1, n2, alpha, direction)
+    power_achieved = calculate_achieved_power(p1, p2, n1, n2, alpha, direction)
     
     # Generate recommendation
     recommendation = _generate_recommendation(significant, p_value, effect_size, power_achieved)
@@ -248,7 +254,7 @@ def _chi_square_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
     # Calculate confidence interval for difference
     p1 = x1 / n1 if n1 > 0 else 0
     p2 = x2 / n2 if n2 > 0 else 0
-    ci_lower, ci_upper = _calculate_confidence_interval(p1, p2, n1, n2, alpha)
+    ci_lower, ci_upper = calculate_confidence_interval_for_difference(p1, p2, n1, n2, confidence_level=1 - alpha)
     
     # Determine significance
     significant = p_value < alpha
@@ -257,7 +263,7 @@ def _chi_square_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
     effect_size = math.sqrt(chi_square / total_users)
     
     # Calculate achieved power
-    power_achieved = _calculate_achieved_power(p1, p2, n1, n2, alpha, "two_tailed")
+    power_achieved = calculate_achieved_power(p1, p2, n1, n2, alpha, "two_tailed")
     
     # Generate recommendation
     recommendation = _generate_recommendation(significant, p_value, effect_size, power_achieved)
@@ -299,11 +305,11 @@ def _fisher_exact_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
     # Calculate confidence interval for difference
     p1 = x1 / n1 if n1 > 0 else 0
     p2 = x2 / n2 if n2 > 0 else 0
-    ci_lower, ci_upper = _calculate_confidence_interval(p1, p2, n1, n2, alpha)
+    ci_lower, ci_upper = calculate_confidence_interval_for_difference(p1, p2, n1, n2, confidence_level=1 - alpha)
 
     significant = p_value < alpha
-    effect_size = _calculate_effect_size(p1, p2)
-    power_achieved = _calculate_achieved_power(p1, p2, n1, n2, alpha, "two_tailed")
+    effect_size = calculate_effect_size_cohens_h(p1, p2)
+    power_achieved = calculate_achieved_power(p1, p2, n1, n2, alpha, "two_tailed")
     recommendation = _generate_recommendation(significant, p_value, effect_size, power_achieved)
 
     return AnalysisResult(
@@ -330,112 +336,12 @@ def _calculate_p_value(z_statistic: float, direction: str) -> float:
         P-value
     """
     # Use normal CDF approximation
-    p_value = 2 * (1 - _normal_cdf(abs(z_statistic)))
+    p_value = 2 * (1 - normal_cdf(abs(z_statistic)))
     
     if direction == "one_tailed":
         p_value = p_value / 2
     
     return min(max(p_value, 0.0), 1.0)
-
-
-def _normal_cdf(z: float) -> float:
-    """
-    Approximate cumulative distribution function for standard normal distribution.
-    
-    Args:
-        z: Z-score
-        
-    Returns:
-        Cumulative probability
-    """
-    # Simple approximation using error function
-    return 0.5 * (1 + math.erf(z / math.sqrt(2)))
-
-
-def _calculate_confidence_interval(p1: float, p2: float, n1: int, n2: int, 
-                                 alpha: float) -> Tuple[float, float]:
-    """
-    Calculate confidence interval for difference in proportions.
-    
-    Args:
-        p1: Control group proportion
-        p2: Treatment group proportion
-        n1: Control group sample size
-        n2: Treatment group sample size
-        alpha: Significance level
-        
-    Returns:
-        Tuple of (lower_bound, upper_bound)
-    """
-    # Calculate standard error for difference
-    se = math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
-    
-    # Calculate margin of error
-    z_alpha_2 = _get_z_score(alpha, "two_tailed")
-    margin_of_error = z_alpha_2 * se
-    
-    # Calculate difference
-    diff = p2 - p1
-    
-    # Calculate bounds
-    lower_bound = diff - margin_of_error
-    upper_bound = diff + margin_of_error
-    
-    return (lower_bound, upper_bound)
-
-
-def _calculate_effect_size(p1: float, p2: float) -> float:
-    """
-    Calculate Cohen's h effect size for proportions.
-    
-    Args:
-        p1: Control group proportion
-        p2: Treatment group proportion
-        
-    Returns:
-        Effect size (Cohen's h)
-    """
-    # Convert proportions to angles
-    theta1 = 2 * math.asin(math.sqrt(p1))
-    theta2 = 2 * math.asin(math.sqrt(p2))
-    
-    # Calculate Cohen's h
-    h = theta2 - theta1
-    
-    return h
-
-
-def _calculate_achieved_power(p1: float, p2: float, n1: int, n2: int,
-                            alpha: float, direction: str) -> float:
-    """
-    Calculate achieved power for the test.
-    
-    Args:
-        p1: Control group proportion
-        p2: Treatment group proportion
-        n1: Control group sample size
-        n2: Treatment group sample size
-        alpha: Significance level
-        direction: Test direction
-        
-    Returns:
-        Achieved power
-    """
-    # Calculate standard error
-    se = math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
-    
-    # Calculate critical value
-    z_alpha = _get_z_score(alpha, direction)
-    critical_value = z_alpha * se
-    
-    # Calculate z-score for the effect
-    effect_size = abs(p2 - p1)
-    z_effect = effect_size / se if se > 0 else 0
-    
-    # Calculate power
-    power = 1 - _normal_cdf(z_alpha - z_effect)
-    
-    return min(max(power, 0.0), 1.0)
 
 
 def _chi_square_p_value(chi_square: float, df: int) -> float:

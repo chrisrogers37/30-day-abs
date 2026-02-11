@@ -6,8 +6,8 @@ design parameter validation.
 """
 
 import pytest
-from core.design import compute_sample_size, _get_z_score
-from core.utils import calculate_minimum_detectable_effect
+from core.design import compute_sample_size
+from core.utils import calculate_minimum_detectable_effect, get_z_score
 from core.types import DesignParams, Allocation
 
 from tests.helpers.assertions import (
@@ -135,7 +135,7 @@ class TestComputeSampleSize:
 
 
 class TestGetZScore:
-    """Test suite for _get_z_score function."""
+    """Test suite for get_z_score function."""
     
     @pytest.mark.unit
     @pytest.mark.parametrize("alpha,direction,expected", [
@@ -147,14 +147,14 @@ class TestGetZScore:
     ])
     def test_get_z_score_standard_values(self, alpha, direction, expected):
         """Test z-score calculation for standard alpha values."""
-        result = _get_z_score(alpha, direction=direction)
+        result = get_z_score(alpha, direction=direction)
         assert_within_tolerance(expected, result, tolerance_abs=0.02)
-    
+
     @pytest.mark.unit
     def test_get_z_score_two_tailed_vs_one_tailed(self):
         """Test that two-tailed and one-tailed give different values."""
-        result_two_tailed = _get_z_score(0.05, direction="two_tailed")
-        result_one_tailed = _get_z_score(0.05, direction="one_tailed")
+        result_two_tailed = get_z_score(0.05, direction="two_tailed")
+        result_one_tailed = get_z_score(0.05, direction="one_tailed")
         
         # Two-tailed should be more conservative (higher z-score)
         assert result_two_tailed > result_one_tailed
