@@ -20,6 +20,27 @@ from .utils import (
     calculate_confidence_interval_for_difference,
 )
 
+# --- Statistical Thresholds ---
+# Effect size thresholds for recommendation (Cohen's h scale)
+EFFECT_SIZE_LARGE = 0.2
+EFFECT_SIZE_MEDIUM = 0.1
+
+# Power threshold below which test is considered underpowered
+MIN_ADEQUATE_POWER = 0.8
+
+# P-value threshold for marginal significance
+MARGINAL_SIGNIFICANCE_THRESHOLD = 0.1
+
+# Business impact thresholds (absolute lift)
+LIFT_THRESHOLD_HIGH_CONFIDENCE = 0.01    # 1% absolute lift
+LIFT_THRESHOLD_MODERATE_CONFIDENCE = 0.005  # 0.5% absolute lift
+
+# Test quality thresholds
+EARLY_STOPPING_HIGH_RISK_N = 1000
+EARLY_STOPPING_MEDIUM_RISK_N = 5000
+NOVELTY_EFFECT_HIGH_THRESHOLD = 0.2    # 20% target lift
+NOVELTY_EFFECT_MEDIUM_THRESHOLD = 0.1  # 10% target lift
+
 
 def select_statistical_test(sim_result: SimResult) -> StatisticalTestSelection:
     """
@@ -373,16 +394,16 @@ def _generate_recommendation(significant: bool, p_value: float,
         Recommendation string
     """
     if significant:
-        if effect_size > 0.2:  # Large effect
+        if effect_size > EFFECT_SIZE_LARGE:
             return "Strong evidence of improvement. Recommend immediate rollout with monitoring."
-        elif effect_size > 0.1:  # Medium effect
+        elif effect_size > EFFECT_SIZE_MEDIUM:
             return "Moderate improvement detected. Recommend gradual rollout with careful monitoring."
-        else:  # Small effect
+        else:
             return "Small but significant improvement. Consider rollout if business impact is meaningful."
     else:
-        if power_achieved < 0.8:
+        if power_achieved < MIN_ADEQUATE_POWER:
             return "Insufficient power to detect effect. Consider increasing sample size or extending test duration."
-        elif p_value < 0.1:
+        elif p_value < MARGINAL_SIGNIFICANCE_THRESHOLD:
             return "Marginal significance. Consider extending test or investigating further."
         else:
             return "No significant difference detected. Consider alternative approaches or hypothesis refinement."
@@ -451,10 +472,10 @@ def calculate_business_impact(sim_result: SimResult,
         confidence_in_revenue = min(0.95, max(0.5, 1 - sim_result.p_value if hasattr(sim_result, 'p_value') else 0.7))
     
     # Determine rollout recommendation
-    if absolute_lift > 0.01:  # 1% absolute lift
+    if absolute_lift > LIFT_THRESHOLD_HIGH_CONFIDENCE:
         rollout_recommendation = "proceed_with_confidence"
         risk_level = "low"
-    elif absolute_lift > 0.005:  # 0.5% absolute lift
+    elif absolute_lift > LIFT_THRESHOLD_MODERATE_CONFIDENCE:
         rollout_recommendation = "proceed_with_caution"
         risk_level = "medium"
     else:
@@ -491,17 +512,17 @@ def assess_test_quality(sim_result: SimResult, design_params: DesignParams) -> T
     allocation_balance = sim_result.control_n / total_n if total_n > 0 else 0.5
     
     # Assess early stopping risk (simplified)
-    if sim_result.control_n < 1000 or sim_result.treatment_n < 1000:
+    if sim_result.control_n < EARLY_STOPPING_HIGH_RISK_N or sim_result.treatment_n < EARLY_STOPPING_HIGH_RISK_N:
         early_stopping_risk = "high"
-    elif sim_result.control_n < 5000 or sim_result.treatment_n < 5000:
+    elif sim_result.control_n < EARLY_STOPPING_MEDIUM_RISK_N or sim_result.treatment_n < EARLY_STOPPING_MEDIUM_RISK_N:
         early_stopping_risk = "medium"
     else:
         early_stopping_risk = "low"
-    
+
     # Assess novelty effect potential (simplified)
-    if design_params.target_lift_pct > 0.2:  # 20% lift
+    if design_params.target_lift_pct > NOVELTY_EFFECT_HIGH_THRESHOLD:
         novelty_effect_potential = "high"
-    elif design_params.target_lift_pct > 0.1:  # 10% lift
+    elif design_params.target_lift_pct > NOVELTY_EFFECT_MEDIUM_THRESHOLD:
         novelty_effect_potential = "medium"
     else:
         novelty_effect_potential = "low"
@@ -513,7 +534,7 @@ def assess_test_quality(sim_result: SimResult, design_params: DesignParams) -> T
     traffic_consistency = 0.95  # Could be enhanced with actual traffic analysis
     
     # Assess sample size adequacy
-    sample_size_adequacy = sim_result.control_n >= 1000 and sim_result.treatment_n >= 1000
+    sample_size_adequacy = sim_result.control_n >= EARLY_STOPPING_HIGH_RISK_N and sim_result.treatment_n >= EARLY_STOPPING_HIGH_RISK_N
     
     # Calculate achieved power (simplified)
     power_achieved = 0.8  # Could be calculated more precisely

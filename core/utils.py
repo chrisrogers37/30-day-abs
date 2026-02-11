@@ -12,6 +12,14 @@ from .logging import get_logger
 
 logger = get_logger(__name__)
 
+# --- Z-Score Critical Values ---
+# Standard normal distribution quantiles for common significance levels
+Z_975 = 1.96    # norm.ppf(0.975) — alpha=0.05 two-tailed
+Z_995 = 2.576   # norm.ppf(0.995) — alpha=0.01 two-tailed
+Z_950 = 1.645   # norm.ppf(0.950) — alpha=0.05 one-tailed
+Z_990 = 2.326   # norm.ppf(0.990) — alpha=0.01 one-tailed
+Z_900 = 1.282   # norm.ppf(0.900) — alpha=0.10 one-tailed
+
 
 def relative_lift_to_absolute(control_rate: float, relative_lift_pct: float) -> float:
     """
@@ -335,11 +343,11 @@ def get_z_score(alpha: float, direction: str) -> float:
 
     # For common alpha values, use exact values
     if abs(alpha - 0.05) < 1e-6:
-        z_score = 1.96 if direction == "two_tailed" else 1.645
+        z_score = Z_975 if direction == "two_tailed" else Z_950
     elif abs(alpha - 0.01) < 1e-6:
-        z_score = 2.576 if direction == "two_tailed" else 2.326
+        z_score = Z_995 if direction == "two_tailed" else Z_990
     elif abs(alpha - 0.1) < 1e-6:
-        z_score = 1.645 if direction == "two_tailed" else 1.282
+        z_score = Z_950 if direction == "two_tailed" else Z_900
     else:
         # For other values, use scipy.stats.norm.ppf
         try:
@@ -348,13 +356,13 @@ def get_z_score(alpha: float, direction: str) -> float:
         except ImportError:
             # Fallback approximation if scipy not available
             if alpha < 0.01:
-                z_score = 2.576
+                z_score = Z_995
             elif alpha < 0.05:
-                z_score = 1.96
+                z_score = Z_975
             elif alpha < 0.1:
-                z_score = 1.645
+                z_score = Z_950
             else:
-                z_score = 1.282
+                z_score = Z_900
 
     logger.debug(f"Z-score calculation: alpha={alpha:.6f}, direction={direction}, z_score={z_score:.6f}")
 
