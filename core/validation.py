@@ -850,7 +850,7 @@ def score_answers_by_id(
                     correct, tolerance = calculate_analysis_answer_by_id(
                         question_id, sim_result, business_target_absolute, alpha
                     )
-            except Exception:
+            except (ValueError, TypeError, KeyError, ZeroDivisionError):
                 correct, tolerance = "N/A", 0
 
             scores[question_id] = {
@@ -883,7 +883,7 @@ def score_answers_by_id(
             if result.is_correct:
                 total_score += 1
 
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, ZeroDivisionError) as e:
             scores[question_id] = {
                 "correct": False,
                 "user": user_answer,

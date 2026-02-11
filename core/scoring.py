@@ -383,7 +383,7 @@ def generate_variable_design_answer_key(
                 qid, design_params, sample_size_result, mde_absolute
             )
             correct_answers[qid] = answer
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, ZeroDivisionError) as e:
             correct_answers[qid] = f"Error: {str(e)}"
 
     return VariableAnswerKey(
@@ -427,7 +427,7 @@ def generate_variable_analysis_answer_key(
                 qid, sim_result, business_target_absolute, alpha
             )
             correct_answers[qid] = answer
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, ZeroDivisionError) as e:
             correct_answers[qid] = f"Error: {str(e)}"
 
     return VariableAnswerKey(

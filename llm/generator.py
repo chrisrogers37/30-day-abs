@@ -364,7 +364,7 @@ Return ONLY valid JSON."""
                         logger.info(f"Novelty score: {novelty_score:.2f}")
                         if diversity_suggestions:
                             logger.debug(f"Diversity suggestions: {diversity_suggestions}")
-                    except Exception as e:
+                    except (ValueError, TypeError, KeyError) as e:
                         logger.warning(f"Novelty scoring failed: {e}")
                         result.novelty_score = 1.0  # Assume novel if scoring fails
 
@@ -381,10 +381,10 @@ Return ONLY valid JSON."""
                         await asyncio.sleep(1.0 * (attempt + 1))  # Exponential backoff
                         continue
                 
-                except Exception as e:
+                except (ValueError, TypeError, KeyError) as e:
                     result.errors.append(f"Unexpected error on attempt {attempt + 1}: {str(e)}")
                     logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
-                    
+
                     if attempt < max_attempts - 1:
                         await asyncio.sleep(1.0 * (attempt + 1))
                         continue
@@ -404,11 +404,11 @@ Return ONLY valid JSON."""
                 result.novelty_score = novelty_score
                 result.diversity_suggestions = diversity_suggestions
                 record_generated_scenario(result.scenario_dto)
-            except Exception as e:
+            except (ValueError, TypeError, KeyError) as e:
                 logger.warning(f"Novelty scoring for fallback failed: {e}")
                 result.novelty_score = 1.0
-            
-        except Exception as e:
+
+        except (LLMError, ValueError, TypeError, KeyError) as e:
             logger.error(f"Critical error in scenario generation: {e}")
             result.errors.append(f"Critical error: {str(e)}")
             result.total_time = time.time() - start_time

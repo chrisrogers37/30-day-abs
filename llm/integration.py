@@ -311,7 +311,7 @@ class LLMIntegration:
             logger.info("🎉 Complete pipeline finished successfully!")
             return result
             
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, ZeroDivisionError, AttributeError) as e:
             logger.error(f"Pipeline failed: {e}")
             result.errors.append(f"Pipeline error: {str(e)}")
             return result
