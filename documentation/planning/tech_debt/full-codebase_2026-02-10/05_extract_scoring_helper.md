@@ -1,5 +1,8 @@
 # Phase 05: Extract Scoring Helper to Reduce Validation Boilerplate
 
+**Status**: ✅ COMPLETE
+**Started**: 2026-02-10
+**Completed**: 2026-02-10
 **PR Title**: `refactor(core): extract scoring helper to reduce validation boilerplate`
 **Risk Level**: Low (pure refactor — behavior unchanged)
 **Effort**: 3-4 hours
