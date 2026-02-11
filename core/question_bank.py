@@ -23,7 +23,7 @@ Each question has:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict, Optional, Callable, Any
+from typing import List, Dict, Optional
 import random
 
 

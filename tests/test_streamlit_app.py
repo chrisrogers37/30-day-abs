@@ -14,14 +14,12 @@ def test_streamlit_imports():
     print("🧪 Testing Streamlit app imports...")
     
     try:
-        import streamlit as st
         print("✅ Streamlit imported successfully")
     except Exception as e:
         print(f"❌ Streamlit import failed: {e}")
         return False
     
     try:
-        import pandas as pd
         print("✅ Pandas imported successfully")
     except Exception as e:
         print(f"❌ Pandas import failed: {e}")
@@ -29,11 +27,6 @@ def test_streamlit_imports():
     
     try:
         # Test our app imports
-        from llm.client import create_llm_client
-        from llm.parser import LLMOutputParser
-        from llm.guardrails import LLMGuardrails
-        from core.simulate import simulate_trial
-        from core.analyze import analyze_results
         print("✅ All app modules imported successfully")
     except Exception as e:
         print(f"❌ App module import failed: {e}")

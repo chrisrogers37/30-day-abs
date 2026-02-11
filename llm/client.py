@@ -70,9 +70,7 @@ from typing import Dict, List, Optional, Union
 from dataclasses import dataclass
 from enum import Enum
 
-import httpx
-from openai import AsyncOpenAI, OpenAI
-from openai.types.chat import ChatCompletion
+from openai import AsyncOpenAI
 
 from core.logging import get_logger
 

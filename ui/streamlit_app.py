@@ -14,7 +14,6 @@ import asyncio
 import sys
 import os
 import pandas as pd
-import json
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -35,22 +34,17 @@ logger = get_logger(__name__)
 from llm.client import create_llm_client
 from llm.parser import LLMOutputParser
 from llm.guardrails import LLMGuardrails
-from core.simulate import simulate_trial, export_user_data_csv
+from core.simulate import simulate_trial
 from core.analyze import analyze_results
 from core.design import compute_sample_size
 from core.types import DesignParams, Allocation
 from core.validation import validate_design_answer, validate_analysis_answer, score_design_answers, score_analysis_answers
-from core.scoring import generate_design_answer_key, generate_analysis_answer_key, create_complete_quiz_result
 from core.question_bank import (
-    Question, QuestionCategory, QuestionDifficulty, AnswerType,
-    DESIGN_QUESTIONS, ANALYSIS_QUESTIONS, PLANNING_QUESTIONS, INTERPRETATION_QUESTIONS,
-    get_question_by_id, get_all_questions, get_question_pool_summary,
+    QuestionDifficulty, get_question_by_id, get_question_pool_summary,
     get_default_design_questions, get_default_analysis_questions,
-    get_default_planning_questions, get_default_interpretation_questions,
     select_design_questions, select_analysis_questions,
     select_planning_questions, select_interpretation_questions
 )
-from schemas.scenario import ScenarioResponseDTO
 
 # Page configuration
 st.set_page_config(

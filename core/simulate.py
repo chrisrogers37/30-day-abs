@@ -7,9 +7,9 @@ conversion rates with proper statistical properties and noise patterns.
 
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
-from .types import DesignParams, SimResult, Allocation
+from .types import DesignParams, SimResult
 
 # --- Simulation Parameters ---
 # Control rate variation (fraction of baseline to simulate sampling variability)

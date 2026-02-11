@@ -4,7 +4,6 @@ Tests for core.analyze module - Statistical analysis functions.
 
 import pytest
 from core.analyze import analyze_results, make_rollout_decision
-from core.types import SimResult
 
 from tests.helpers.assertions import (
     assert_p_value_valid,

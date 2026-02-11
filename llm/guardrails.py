@@ -80,9 +80,8 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 from schemas.scenario import ScenarioResponseDTO
-from schemas.design import DesignParamsDTO
 from schemas.shared import (
-    CompanyType, UserSegment, MetricType, EffectSizeProfile, TrafficTier
+    MetricType, EffectSizeProfile, TrafficTier
 )
 
 from core.logging import get_logger

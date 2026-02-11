@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Test script to demonstrate scenario variety."""
-import os
 import asyncio
 from dotenv import load_dotenv
 

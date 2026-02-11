@@ -6,14 +6,13 @@ and generates detailed answer keys for user evaluation.
 """
 
 import math
-from typing import Dict, Tuple, Optional
+from typing import Optional
 
 from scipy.stats import fisher_exact as scipy_fisher_exact
 from scipy.stats import chi2
 
 from .types import SimResult, AnalysisResult, BusinessImpact, TestQuality, DesignParams, StatisticalTestSelection
 from .utils import (
-    get_z_score,
     normal_cdf,
     calculate_achieved_power,
     calculate_effect_size_cohens_h,

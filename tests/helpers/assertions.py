@@ -5,8 +5,7 @@ This module provides custom assertion functions that make tests more readable
 and provide better error messages.
 """
 
-from typing import Any, Tuple, Optional
-import math
+from typing import Tuple, Optional
 
 
 def assert_within_tolerance(

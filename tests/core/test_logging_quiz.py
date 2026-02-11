@@ -6,8 +6,6 @@ structured quiz session logging.
 """
 
 import pytest
-import tempfile
-from pathlib import Path
 from core.logging import (
     QuizLogger, QuizSession, start_quiz_session, configure_quiz_logging,
     setup_logging, reset_logging

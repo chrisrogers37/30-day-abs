@@ -7,7 +7,7 @@ This module tests the core domain types and their validation logic.
 import pytest
 from core.types import Allocation, DesignParams, SimResult
 
-from tests.helpers.assertions import assert_allocation_valid, assert_probability_valid
+from tests.helpers.assertions import assert_allocation_valid
 
 
 class TestAllocation:

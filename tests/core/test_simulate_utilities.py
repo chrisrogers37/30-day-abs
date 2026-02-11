@@ -5,8 +5,6 @@ Tests for CSV export, aggregate summaries, validation, and seasonality functions
 """
 
 import pytest
-import os
-from datetime import datetime
 from core.simulate import (
     simulate_trial,
     validate_simulation_consistency,

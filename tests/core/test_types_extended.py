@@ -5,8 +5,8 @@ Tests for property validation, immutability, and edge case handling.
 """
 
 import pytest
-from core.types import Allocation, DesignParams, SimResult, SampleSize, AnalysisResult
-from tests.helpers.factories import create_allocation, create_design_params
+from core.types import Allocation
+from tests.helpers.factories import create_design_params
 
 
 class TestAllocationEdgeCases:
