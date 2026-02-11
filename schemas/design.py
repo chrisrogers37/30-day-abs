@@ -63,6 +63,22 @@ class DesignParamsDTO(BaseModel):
             raise ValueError("Target lift should be at least 1% for meaningful testing")
         return v
 
+    def to_design_params(self) -> "DesignParams":
+        """Convert this DTO to core DesignParams for calculations."""
+        from core.types import DesignParams, Allocation
+
+        return DesignParams(
+            baseline_conversion_rate=self.baseline_conversion_rate,
+            target_lift_pct=self.target_lift_pct,
+            alpha=self.alpha,
+            power=self.power,
+            allocation=Allocation(
+                control=self.allocation.control,
+                treatment=self.allocation.treatment,
+            ),
+            expected_daily_traffic=self.expected_daily_traffic,
+        )
+
 
 class SampleSizeRequestDTO(BaseModel):
     """Request to calculate sample size for a test design."""
