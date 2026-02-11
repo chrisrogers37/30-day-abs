@@ -74,7 +74,7 @@ from dataclasses import dataclass
 from .generator import LLMScenarioGenerator
 from .parser import LLMOutputParser
 
-from core.types import DesignParams, Allocation, SimResult, AnalysisResult
+from core.types import DesignParams, SimResult, AnalysisResult
 from core.design import compute_sample_size
 from core.simulate import simulate_trial
 from core.analyze import analyze_results
@@ -318,25 +318,7 @@ class LLMIntegration:
     
     def _convert_to_core_types(self, scenario_dto: ScenarioResponseDTO) -> DesignParams:
         """Convert LLM DTOs to core domain types."""
-        design_dto = scenario_dto.design_params
-        
-        # Convert allocation
-        allocation = Allocation(
-            control=design_dto.allocation.control,
-            treatment=design_dto.allocation.treatment
-        )
-        
-        # Create core DesignParams
-        design_params = DesignParams(
-            baseline_conversion_rate=design_dto.baseline_conversion_rate,
-            target_lift_pct=design_dto.target_lift_pct,
-            alpha=design_dto.alpha,
-            power=design_dto.power,
-            allocation=allocation,
-            expected_daily_traffic=design_dto.expected_daily_traffic
-        )
-        
-        return design_params
+        return scenario_dto.design_params.to_design_params()
     
     def _compare_with_llm_expectations(
         self,

@@ -255,20 +255,8 @@ def run_simulation(scenario_dto):
         try:
             # Convert DTO to core types
             design_params = scenario_dto.design_params
-            allocation = Allocation(
-                control=design_params.allocation.control,
-                treatment=design_params.allocation.treatment
-            )
-            
-            core_design_params = DesignParams(
-                baseline_conversion_rate=design_params.baseline_conversion_rate,
-                target_lift_pct=design_params.target_lift_pct,
-                alpha=design_params.alpha,
-                power=design_params.power,
-                allocation=allocation,
-                expected_daily_traffic=design_params.expected_daily_traffic
-            )
-            
+            core_design_params = design_params.to_design_params()
+
             logger.info(f"📊 Design parameters - Baseline: {design_params.baseline_conversion_rate:.3f}, Target lift: {design_params.target_lift_pct:.1%}, Alpha: {design_params.alpha}, Power: {design_params.power}")
             
             # Calculate sample size

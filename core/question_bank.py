@@ -830,16 +830,17 @@ def get_default_analysis_questions() -> List[str]:
     ]
 
 
-def select_design_questions(
-    count: int = 6,
+def _select_from_pool(
+    question_pool: Dict[str, Question],
+    count: int,
     categories: Optional[List[QuestionCategory]] = None,
     difficulty: Optional[QuestionDifficulty] = None,
-    seed: Optional[int] = None
+    seed: Optional[int] = None,
 ) -> List[Question]:
-    """
-    Select a set of design phase questions.
+    """Select questions from a pool with optional filtering.
 
     Args:
+        question_pool: Dict of question_id -> Question to select from
         count: Number of questions to select
         categories: Optional filter by categories
         difficulty: Optional filter by difficulty
@@ -848,21 +849,27 @@ def select_design_questions(
     Returns:
         List of selected Question objects
     """
-    if seed is not None:
-        random.seed(seed)
+    pool = list(question_pool.values())
 
-    pool = list(DESIGN_QUESTIONS.values())
-
-    # Apply filters
     if categories:
         pool = [q for q in pool if q.category in categories]
     if difficulty:
         pool = [q for q in pool if q.difficulty == difficulty]
 
-    # Ensure we have enough questions
     count = min(count, len(pool))
 
-    return random.sample(pool, count)
+    rng = random.Random(seed) if seed is not None else random
+    return rng.sample(pool, count)
+
+
+def select_design_questions(
+    count: int = 6,
+    categories: Optional[List[QuestionCategory]] = None,
+    difficulty: Optional[QuestionDifficulty] = None,
+    seed: Optional[int] = None
+) -> List[Question]:
+    """Select a set of design phase questions."""
+    return _select_from_pool(DESIGN_QUESTIONS, count, categories, difficulty, seed)
 
 
 def select_analysis_questions(
@@ -871,33 +878,8 @@ def select_analysis_questions(
     difficulty: Optional[QuestionDifficulty] = None,
     seed: Optional[int] = None
 ) -> List[Question]:
-    """
-    Select a set of analysis phase questions.
-
-    Args:
-        count: Number of questions to select
-        categories: Optional filter by categories
-        difficulty: Optional filter by difficulty
-        seed: Random seed for reproducibility
-
-    Returns:
-        List of selected Question objects
-    """
-    if seed is not None:
-        random.seed(seed)
-
-    pool = list(ANALYSIS_QUESTIONS.values())
-
-    # Apply filters
-    if categories:
-        pool = [q for q in pool if q.category in categories]
-    if difficulty:
-        pool = [q for q in pool if q.difficulty == difficulty]
-
-    # Ensure we have enough questions
-    count = min(count, len(pool))
-
-    return random.sample(pool, count)
+    """Select a set of analysis phase questions."""
+    return _select_from_pool(ANALYSIS_QUESTIONS, count, categories, difficulty, seed)
 
 
 def get_default_planning_questions() -> List[str]:
@@ -927,27 +909,8 @@ def select_planning_questions(
     difficulty: Optional[QuestionDifficulty] = None,
     seed: Optional[int] = None
 ) -> List[Question]:
-    """
-    Select a set of planning phase questions.
-
-    Args:
-        count: Number of questions to select
-        difficulty: Optional filter by difficulty
-        seed: Random seed for reproducibility
-
-    Returns:
-        List of selected Question objects
-    """
-    if seed is not None:
-        random.seed(seed)
-
-    pool = list(PLANNING_QUESTIONS.values())
-
-    if difficulty:
-        pool = [q for q in pool if q.difficulty == difficulty]
-
-    count = min(count, len(pool))
-    return random.sample(pool, count)
+    """Select a set of planning phase questions."""
+    return _select_from_pool(PLANNING_QUESTIONS, count, difficulty=difficulty, seed=seed)
 
 
 def select_interpretation_questions(
@@ -955,27 +918,8 @@ def select_interpretation_questions(
     difficulty: Optional[QuestionDifficulty] = None,
     seed: Optional[int] = None
 ) -> List[Question]:
-    """
-    Select a set of interpretation phase questions.
-
-    Args:
-        count: Number of questions to select
-        difficulty: Optional filter by difficulty
-        seed: Random seed for reproducibility
-
-    Returns:
-        List of selected Question objects
-    """
-    if seed is not None:
-        random.seed(seed)
-
-    pool = list(INTERPRETATION_QUESTIONS.values())
-
-    if difficulty:
-        pool = [q for q in pool if q.difficulty == difficulty]
-
-    count = min(count, len(pool))
-    return random.sample(pool, count)
+    """Select a set of interpretation phase questions."""
+    return _select_from_pool(INTERPRETATION_QUESTIONS, count, difficulty=difficulty, seed=seed)
 
 
 def select_advanced_questions(
