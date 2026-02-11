@@ -79,7 +79,7 @@ Phase 08: Add missing test coverage (should run LAST, after code stabilizes)
 | [02](./02_consolidate_duplicated_functions.md) | refactor(core): consolidate duplicated statistical functions | Low | 4-6h | Phase 01 | ✅ PR #10 |
 | [03](./03_extract_named_constants.md) | refactor(core): extract magic numbers to named constants | Low | 2-3h | Phase 02 | ✅ PR #11 |
 | [04](./04_clean_unused_imports.md) | chore: remove unused imports across codebase | Low | 1h | None | ✅ PR #12 |
-| [05](./05_extract_scoring_helper.md) | refactor(core): extract scoring helper to reduce validation boilerplate | Low | 3-4h | None |
+| [05](./05_extract_scoring_helper.md) | refactor(core): extract scoring helper to reduce validation boilerplate | Low | 3-4h | None | ✅ PR #13 |
 | [06](./06_extract_shared_helpers.md) | refactor: extract shared DTO conversion and question selection helpers | Low | 3-5h | None |
 | [07](./07_narrow_except_clauses.md) | fix(llm): narrow broad except clauses to specific exceptions | Low | 3-4h | None |
 | [08](./08_add_missing_test_coverage.md) | test: add coverage for 0% modules | Low | 12-16h | All above |

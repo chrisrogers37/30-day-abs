@@ -38,7 +38,155 @@ class ScoringResult:
     grade: str
 
 
-def validate_design_answer(question_num: int, user_answer: float, 
+# --- Scoring Helpers ---
+
+def _calculate_grade(percentage: float) -> str:
+    """Calculate letter grade from percentage score."""
+    if percentage >= 90:
+        return "A"
+    elif percentage >= 80:
+        return "B"
+    elif percentage >= 70:
+        return "C"
+    elif percentage >= 60:
+        return "D"
+    return "F"
+
+
+def _score_numeric_answer(
+    user_answers: Dict[str, Any],
+    correct_answers: Dict[str, Any],
+    key: str,
+    tolerance: float,
+    default: Any = None
+) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Score a single numeric answer against the correct value.
+
+    Args:
+        user_answers: Dict of user's answers
+        correct_answers: Dict of correct answers
+        key: Answer key to look up in both dicts
+        tolerance: Acceptable absolute deviation
+        default: Default value if user didn't answer
+
+    Returns:
+        Tuple of (is_correct, score_dict)
+    """
+    user_value = user_answers.get(key, default)
+    correct_value = correct_answers[key]
+
+    if user_value is None:
+        return False, {
+            "correct": False,
+            "user": "No answer",
+            "correct_answer": correct_value,
+            "tolerance": tolerance
+        }
+
+    is_correct = abs(user_value - correct_value) <= tolerance
+    return is_correct, {
+        "correct": is_correct,
+        "user": user_value,
+        "correct_answer": correct_value,
+        "tolerance": tolerance
+    }
+
+
+def _score_range_answer(
+    user_answers: Dict[str, Any],
+    correct_answers: Dict[str, Any],
+    key: str,
+    tolerance: float
+) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Score a range (tuple) answer like confidence interval.
+
+    Returns:
+        Tuple of (is_correct, score_dict)
+    """
+    user_value = user_answers.get(key)
+    correct_value = correct_answers[key]
+    correct_formatted = f"[{correct_value[0]:.2f}%, {correct_value[1]:.2f}%]"
+
+    if user_value is None:
+        return False, {
+            "correct": False,
+            "user": "No answer",
+            "correct_answer": correct_formatted,
+            "tolerance": tolerance
+        }
+
+    if isinstance(user_value, tuple) and len(user_value) == 2:
+        is_correct = (abs(user_value[0] - correct_value[0]) <= tolerance and
+                     abs(user_value[1] - correct_value[1]) <= tolerance)
+        user_formatted = f"[{user_value[0]:.2f}%, {user_value[1]:.2f}%]"
+    else:
+        is_correct = False
+        user_formatted = str(user_value)
+
+    return is_correct, {
+        "correct": is_correct,
+        "user": user_formatted,
+        "correct_answer": correct_formatted,
+        "tolerance": tolerance
+    }
+
+
+def _score_string_answer(
+    user_answers: Dict[str, Any],
+    correct_answers: Dict[str, Any],
+    key: str
+) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Score a string answer (case-insensitive exact match).
+
+    Returns:
+        Tuple of (is_correct, score_dict)
+    """
+    user_value = user_answers.get(key)
+    correct_value = correct_answers[key]
+
+    if user_value is None:
+        return False, {
+            "correct": False,
+            "user": "No answer",
+            "correct_answer": correct_value,
+            "tolerance": "exact_match"
+        }
+
+    is_correct = user_value.lower() == correct_value.lower()
+    return is_correct, {
+        "correct": is_correct,
+        "user": user_value,
+        "correct_answer": correct_value,
+        "tolerance": "exact_match"
+    }
+
+
+# Design question scoring specifications: (key, tolerance, default)
+_DESIGN_SCORING_SPECS = [
+    ("mde_absolute", 0.5, 0),
+    ("target_conversion_rate", 0.5, 0),
+    ("relative_lift_pct", 2.0, 0),
+    ("sample_size", 50, 0),
+    ("duration", 1, 0),
+    ("additional_conversions", 5, 0),
+]
+
+# Analysis question scoring specifications: (key, tolerance, score_type)
+_ANALYSIS_SCORING_SPECS = [
+    ("control_conversion_rate", 0.05, "numeric"),
+    ("treatment_conversion_rate", 0.05, "numeric"),
+    ("absolute_lift", 0.01, "numeric"),
+    ("relative_lift", 0.5, "numeric"),
+    ("p_value", 0.001, "numeric"),
+    ("confidence_interval", 0.01, "range"),
+    ("rollout_decision", None, "string"),
+]
+
+
+def validate_design_answer(question_num: int, user_answer: float,
                           design_params: DesignParams, 
                           sample_size_result: Optional[Any] = None,
                           mde_absolute: Optional[float] = None) -> ValidationResult:
@@ -297,117 +445,38 @@ def calculate_correct_analysis_answers(sim_result: SimResult, business_target_ab
     return result
 
 
-def score_design_answers(user_answers: Dict[str, Any], 
+def score_design_answers(user_answers: Dict[str, Any],
                         design_params: DesignParams,
                         sample_size_result: Any,
                         mde_absolute: Optional[float] = None) -> ScoringResult:
     """
     Score design question answers.
-    
+
     Args:
         user_answers: User's answers
         design_params: Design parameters from scenario
         sample_size_result: Sample size calculation result
-        
+
     Returns:
         ScoringResult with scores and feedback
     """
-    # Calculate correct answers
     correct_answers = calculate_correct_design_answers(design_params, sample_size_result, mde_absolute)
-    
-    # Score each answer
+
     scores = {}
     total_score = 0
-    max_score = 6
-    
-    # Question 1: MDE (absolute)
-    user_mde = user_answers.get("mde_absolute", 0)
-    correct_mde = correct_answers["mde_absolute"]
-    tolerance = 0.5
-    is_correct = abs(user_mde - correct_mde) <= tolerance
-    scores["mde_absolute"] = {
-        "correct": is_correct,
-        "user": user_mde,
-        "correct_answer": correct_mde,
-        "tolerance": tolerance
-    }
-    if is_correct:
-        total_score += 1
-    
-    # Question 2: Target conversion rate
-    user_target = user_answers.get("target_conversion_rate", 0)
-    correct_target = correct_answers["target_conversion_rate"]
-    tolerance = 0.5
-    is_correct = abs(user_target - correct_target) <= tolerance
-    scores["target_conversion_rate"] = {
-        "correct": is_correct,
-        "user": user_target,
-        "correct_answer": correct_target,
-        "tolerance": tolerance
-    }
-    if is_correct:
-        total_score += 1
-    
-    # Question 3: Relative lift
-    user_relative = user_answers.get("relative_lift_pct", 0)
-    correct_relative = correct_answers["relative_lift_pct"]
-    tolerance = 2.0
-    is_correct = abs(user_relative - correct_relative) <= tolerance
-    scores["relative_lift_pct"] = {
-        "correct": is_correct,
-        "user": user_relative,
-        "correct_answer": correct_relative,
-        "tolerance": tolerance
-    }
-    if is_correct:
-        total_score += 1
-    
-    # Question 4: Sample size
-    user_sample = user_answers.get("sample_size", 0)
-    correct_sample = correct_answers["sample_size"]
-    tolerance = 50
-    is_correct = abs(user_sample - correct_sample) <= tolerance
-    scores["sample_size"] = {
-        "correct": is_correct,
-        "user": user_sample,
-        "correct_answer": correct_sample,
-        "tolerance": tolerance
-    }
-    if is_correct:
-        total_score += 1
-    
-    # Question 5: Duration
-    user_duration = user_answers.get("duration", 0)
-    correct_duration = correct_answers["duration"]
-    tolerance = 1
-    is_correct = abs(user_duration - correct_duration) <= tolerance
-    scores["duration"] = {
-        "correct": is_correct,
-        "user": user_duration,
-        "correct_answer": correct_duration,
-        "tolerance": tolerance
-    }
-    if is_correct:
-        total_score += 1
-    
-    # Question 6: Additional conversions
-    user_conversions = user_answers.get("additional_conversions", 0)
-    correct_conversions = correct_answers["additional_conversions"]
-    tolerance = 5
-    is_correct = abs(user_conversions - correct_conversions) <= tolerance
-    scores["additional_conversions"] = {
-        "correct": is_correct,
-        "user": user_conversions,
-        "correct_answer": correct_conversions,
-        "tolerance": tolerance
-    }
-    if is_correct:
-        total_score += 1
-    
-    # Calculate percentage and grade
+
+    for key, tolerance, default in _DESIGN_SCORING_SPECS:
+        is_correct, score_dict = _score_numeric_answer(
+            user_answers, correct_answers, key, tolerance, default
+        )
+        scores[key] = score_dict
+        if is_correct:
+            total_score += 1
+
+    max_score = len(_DESIGN_SCORING_SPECS)
     percentage = (total_score / max_score) * 100 if max_score > 0 else 0
-    grade = "A" if percentage >= 90 else "B" if percentage >= 80 else "C" if percentage >= 70 else "D" if percentage >= 60 else "F"
-    
+    grade = _calculate_grade(percentage)
+
     return ScoringResult(
         scores=scores,
         total_score=total_score,
@@ -417,190 +486,45 @@ def score_design_answers(user_answers: Dict[str, Any],
     )
 
 
-def score_analysis_answers(user_answers: Dict[str, Any], 
+def score_analysis_answers(user_answers: Dict[str, Any],
                           sim_result: SimResult,
                           business_target_absolute: float = None) -> ScoringResult:
     """
     Score analysis question answers.
-    
+
     Args:
         user_answers: User's answers
         sim_result: Simulation results
         business_target_absolute: Business target absolute lift for rollout decision
-        
+
     Returns:
         ScoringResult with scores and feedback
     """
-    # Calculate correct answers
     correct_answers = calculate_correct_analysis_answers(sim_result, business_target_absolute)
-    
-    # Score each answer
+
     scores = {}
     total_score = 0
-    max_score = 6
-    
-    # Question 1: Control conversion rate
-    user_control = user_answers.get("control_conversion_rate")
-    if user_control is not None:
-        correct_control = correct_answers["control_conversion_rate"]
-        tolerance = 0.05
-        is_correct = abs(user_control - correct_control) <= tolerance
-        scores["control_conversion_rate"] = {
-            "correct": is_correct,
-            "user": user_control,
-            "correct_answer": correct_control,
-            "tolerance": tolerance
-        }
+
+    for key, tolerance, score_type in _ANALYSIS_SCORING_SPECS:
+        if score_type == "numeric":
+            is_correct, score_dict = _score_numeric_answer(
+                user_answers, correct_answers, key, tolerance
+            )
+        elif score_type == "range":
+            is_correct, score_dict = _score_range_answer(
+                user_answers, correct_answers, key, tolerance
+            )
+        elif score_type == "string":
+            is_correct, score_dict = _score_string_answer(
+                user_answers, correct_answers, key
+            )
+        scores[key] = score_dict
         if is_correct:
             total_score += 1
-    else:
-        scores["control_conversion_rate"] = {
-            "correct": False,
-            "user": "No answer",
-            "correct_answer": correct_answers["control_conversion_rate"],
-            "tolerance": 0.05
-        }
-    
-    # Question 2: Treatment conversion rate
-    user_treatment = user_answers.get("treatment_conversion_rate")
-    if user_treatment is not None:
-        correct_treatment = correct_answers["treatment_conversion_rate"]
-        tolerance = 0.05
-        is_correct = abs(user_treatment - correct_treatment) <= tolerance
-        scores["treatment_conversion_rate"] = {
-            "correct": is_correct,
-            "user": user_treatment,
-            "correct_answer": correct_treatment,
-            "tolerance": tolerance
-        }
-        if is_correct:
-            total_score += 1
-    else:
-        scores["treatment_conversion_rate"] = {
-            "correct": False,
-            "user": "No answer",
-            "correct_answer": correct_answers["treatment_conversion_rate"],
-            "tolerance": 0.05
-        }
-    
-    # Question 3: Absolute lift
-    user_absolute = user_answers.get("absolute_lift")
-    if user_absolute is not None:
-        correct_absolute = correct_answers["absolute_lift"]
-        tolerance = 0.01
-        is_correct = abs(user_absolute - correct_absolute) <= tolerance
-        scores["absolute_lift"] = {
-            "correct": is_correct,
-            "user": user_absolute,
-            "correct_answer": correct_absolute,
-            "tolerance": tolerance
-        }
-        if is_correct:
-            total_score += 1
-    else:
-        scores["absolute_lift"] = {
-            "correct": False,
-            "user": "No answer",
-            "correct_answer": correct_answers["absolute_lift"],
-            "tolerance": 0.01
-        }
-    
-    # Question 4: Relative lift
-    user_relative = user_answers.get("relative_lift")
-    if user_relative is not None:
-        correct_relative = correct_answers["relative_lift"]
-        tolerance = 0.5
-        is_correct = abs(user_relative - correct_relative) <= tolerance
-        scores["relative_lift"] = {
-            "correct": is_correct,
-            "user": user_relative,
-            "correct_answer": correct_relative,
-            "tolerance": tolerance
-        }
-        if is_correct:
-            total_score += 1
-    else:
-        scores["relative_lift"] = {
-            "correct": False,
-            "user": "No answer",
-            "correct_answer": correct_answers["relative_lift"],
-            "tolerance": 0.5
-        }
-    
-    # Question 5: P-value
-    user_p_value = user_answers.get("p_value")
-    if user_p_value is not None:
-        correct_p_value = correct_answers["p_value"]
-        tolerance = 0.001
-        is_correct = abs(user_p_value - correct_p_value) <= tolerance
-        scores["p_value"] = {
-            "correct": is_correct,
-            "user": user_p_value,
-            "correct_answer": correct_p_value,
-            "tolerance": tolerance
-        }
-        if is_correct:
-            total_score += 1
-    else:
-        scores["p_value"] = {
-            "correct": False,
-            "user": "No answer",
-            "correct_answer": correct_answers["p_value"],
-            "tolerance": 0.001
-        }
-    
-    # Question 6: Confidence interval
-    user_ci = user_answers.get("confidence_interval")
-    if user_ci is not None:
-        correct_ci = correct_answers["confidence_interval"]
-        tolerance = 0.01
-        if isinstance(user_ci, tuple) and len(user_ci) == 2:
-            user_lower, user_upper = user_ci
-            is_correct = (abs(user_lower - correct_ci[0]) <= tolerance and 
-                         abs(user_upper - correct_ci[1]) <= tolerance)
-        else:
-            is_correct = False
-        scores["confidence_interval"] = {
-            "correct": is_correct,
-            "user": f"[{user_ci[0]:.2f}%, {user_ci[1]:.2f}%]" if isinstance(user_ci, tuple) else str(user_ci),
-            "correct_answer": f"[{correct_ci[0]:.2f}%, {correct_ci[1]:.2f}%]",
-            "tolerance": tolerance
-        }
-        if is_correct:
-            total_score += 1
-    else:
-        scores["confidence_interval"] = {
-            "correct": False,
-            "user": "No answer",
-            "correct_answer": f"[{correct_answers['confidence_interval'][0]:.2f}%, {correct_answers['confidence_interval'][1]:.2f}%]",
-            "tolerance": 0.01
-        }
-    
-    # Question 7: Rollout decision
-    user_decision = user_answers.get("rollout_decision")
-    if user_decision is not None:
-        correct_decision = correct_answers["rollout_decision"]
-        is_correct = user_decision.lower() == correct_decision.lower()
-        scores["rollout_decision"] = {
-            "correct": is_correct,
-            "user": user_decision,
-            "correct_answer": correct_decision,
-            "tolerance": "exact_match"
-        }
-        if is_correct:
-            total_score += 1
-    else:
-        scores["rollout_decision"] = {
-            "correct": False,
-            "user": "No answer",
-            "correct_answer": correct_answers["rollout_decision"],
-            "tolerance": "exact_match"
-        }
-    
-    # Calculate percentage and grade
-    max_score = 7  # Updated for 7 questions
+
+    max_score = len(_ANALYSIS_SCORING_SPECS)
     percentage = (total_score / max_score) * 100 if max_score > 0 else 0
-    grade = "A" if percentage >= 90 else "B" if percentage >= 80 else "C" if percentage >= 70 else "D" if percentage >= 60 else "F"
+    grade = _calculate_grade(percentage)
 
     return ScoringResult(
         scores=scores,
@@ -968,7 +892,7 @@ def score_answers_by_id(
             }
 
     percentage = (total_score / max_score) * 100 if max_score > 0 else 0
-    grade = "A" if percentage >= 90 else "B" if percentage >= 80 else "C" if percentage >= 70 else "D" if percentage >= 60 else "F"
+    grade = _calculate_grade(percentage)
 
     return ScoringResult(
         scores=scores,
