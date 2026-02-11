@@ -11,6 +11,35 @@ from typing import Dict, List, Optional, Tuple
 
 from .types import DesignParams, SimResult, Allocation
 
+# --- Simulation Parameters ---
+# Control rate variation (fraction of baseline to simulate sampling variability)
+CONTROL_RATE_VARIATION_MIN = -0.1
+CONTROL_RATE_VARIATION_MAX = 0.1
+
+# Effect realization distribution
+# [full_effect, partial_effect, no_effect, negative_effect]
+EFFECT_MULTIPLIERS = [1.0, 0.5, 0.0, -0.3]
+EFFECT_WEIGHTS = [0.70, 0.20, 0.08, 0.02]
+
+# Default simulation duration (days)
+DEFAULT_SIMULATION_DAYS = 30
+
+# Session duration ranges (seconds)
+CONVERTER_SESSION_DURATION_RANGE = (300, 1800)     # 5-30 minutes
+NON_CONVERTER_SESSION_DURATION_RANGE = (30, 600)   # 30s-10 minutes
+
+# Page view ranges
+CONVERTER_PAGE_VIEW_RANGE = (3, 15)
+NON_CONVERTER_PAGE_VIEW_RANGE = (1, 5)
+
+# Device type distribution
+DEVICE_TYPES = ['desktop', 'mobile', 'tablet']
+DEVICE_WEIGHTS = [0.4, 0.5, 0.1]
+
+# Traffic source distribution
+TRAFFIC_SOURCES = ['organic', 'direct', 'social', 'paid', 'email', 'referral']
+TRAFFIC_WEIGHTS = [0.35, 0.25, 0.15, 0.15, 0.05, 0.05]
+
 
 def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
     """
@@ -37,8 +66,8 @@ def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
     # This reflects the reality that observed rates differ from true population rates
     baseline_rate = params.baseline_conversion_rate
     
-    # Add realistic variation to control rate (±10% of baseline)
-    control_variation = random.uniform(-0.1, 0.1)  # ±10% variation
+    # Add realistic variation to control rate
+    control_variation = random.uniform(CONTROL_RATE_VARIATION_MIN, CONTROL_RATE_VARIATION_MAX)
     control_rate = baseline_rate * (1 + control_variation)
     control_rate = max(0.001, min(0.999, control_rate))  # Keep within bounds
     
@@ -47,10 +76,9 @@ def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
     target_treatment_rate = control_rate * (1 + params.target_lift_pct)
     
     # Add realistic variation to treatment effect
-    # 70% chance of achieving target lift, 20% chance of partial success, 10% chance of failure
     effect_variation = random.choices(
-        [1.0, 0.5, 0.0, -0.3],  # Full effect, partial effect, no effect, negative effect
-        weights=[0.7, 0.2, 0.08, 0.02]  # Probabilities
+        EFFECT_MULTIPLIERS,
+        weights=EFFECT_WEIGHTS
     )[0]
     
     # Calculate actual treatment rate with variation
@@ -66,7 +94,7 @@ def simulate_trial(params: DesignParams, seed: int = 42) -> SimResult:
     
     # Calculate sample sizes based on allocation
     # For now, use a simple approach - in production, this would use the calculated sample size
-    total_traffic = params.expected_daily_traffic * 30  # Assume 30 days for now
+    total_traffic = params.expected_daily_traffic * DEFAULT_SIMULATION_DAYS
     control_n = int(total_traffic * params.allocation.control)
     treatment_n = int(total_traffic * params.allocation.treatment)
     
@@ -196,10 +224,10 @@ def _generate_session_duration(converted: bool) -> int:
     """
     if converted:
         # Converters tend to have longer sessions
-        return random.randint(300, 1800)  # 5-30 minutes
+        return random.randint(*CONVERTER_SESSION_DURATION_RANGE)
     else:
         # Non-converters have shorter sessions
-        return random.randint(30, 600)  # 30 seconds - 10 minutes
+        return random.randint(*NON_CONVERTER_SESSION_DURATION_RANGE)
 
 
 def _generate_page_views(converted: bool) -> int:
@@ -214,10 +242,10 @@ def _generate_page_views(converted: bool) -> int:
     """
     if converted:
         # Converters view more pages
-        return random.randint(3, 15)
+        return random.randint(*CONVERTER_PAGE_VIEW_RANGE)
     else:
         # Non-converters view fewer pages
-        return random.randint(1, 5)
+        return random.randint(*NON_CONVERTER_PAGE_VIEW_RANGE)
 
 
 def _generate_device_type() -> str:
@@ -228,8 +256,8 @@ def _generate_device_type() -> str:
         Device type string
     """
     return random.choices(
-        ['desktop', 'mobile', 'tablet'],
-        weights=[0.4, 0.5, 0.1]
+        DEVICE_TYPES,
+        weights=DEVICE_WEIGHTS
     )[0]
 
 
@@ -241,8 +269,8 @@ def _generate_traffic_source() -> str:
         Traffic source string
     """
     return random.choices(
-        ['organic', 'direct', 'social', 'paid', 'email', 'referral'],
-        weights=[0.35, 0.25, 0.15, 0.15, 0.05, 0.05]
+        TRAFFIC_SOURCES,
+        weights=TRAFFIC_WEIGHTS
     )[0]
 
 
