@@ -12,7 +12,7 @@ from core.validation import (
     calculate_correct_design_answers,
     calculate_correct_analysis_answers
 )
-from tests.helpers.factories import create_design_params, create_significant_positive_result
+from tests.helpers.factories import create_significant_positive_result
 
 
 class TestScoreDesignAnswers:

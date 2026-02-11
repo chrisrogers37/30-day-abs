@@ -4,7 +4,7 @@ Tests for core.simulate module - Data simulation functions.
 
 import pytest
 from core.simulate import simulate_trial
-from core.types import DesignParams, Allocation
+from core.types import Allocation
 
 from tests.helpers.assertions import (
     assert_simulation_result_valid,

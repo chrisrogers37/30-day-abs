@@ -3,7 +3,7 @@ Tests for llm.client module - LLM client operations.
 """
 
 import pytest
-from tests.helpers.mocks import MockLLMClient, create_mock_llm_client
+from tests.helpers.mocks import create_mock_llm_client
 
 
 class TestMockLLMClient:

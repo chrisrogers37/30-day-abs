@@ -2,7 +2,6 @@
 import pytest
 from pydantic import ValidationError
 from schemas.design import DesignParamsDTO
-from schemas.shared import AllocationDTO
 
 class TestDesignParamsDTO:
     @pytest.mark.unit

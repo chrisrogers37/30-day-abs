@@ -9,8 +9,7 @@ from typing import Optional, Dict, Any
 import numpy as np
 
 from core.types import Allocation, DesignParams, SimResult
-from schemas.shared import AllocationDTO, CompanyType, UserSegment
-from schemas.scenario import ScenarioDTO
+from schemas.shared import AllocationDTO
 
 
 # ============================================================================

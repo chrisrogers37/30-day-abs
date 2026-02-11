@@ -6,11 +6,10 @@ sample sizes, test durations, and other design parameters.
 """
 
 import math
-from typing import Optional
 
 from .types import DesignParams, SampleSize
 from .logging import get_logger
-from .utils import get_z_score, normal_cdf, calculate_achieved_power, calculate_minimum_detectable_effect
+from .utils import get_z_score, calculate_achieved_power
 
 logger = get_logger(__name__)
 

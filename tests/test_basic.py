@@ -124,7 +124,7 @@ def test_simulation():
 def test_analysis():
     """Test statistical analysis."""
     try:
-        from core.types import DesignParams, Allocation, SimResult
+        from core.types import SimResult
         from core.analyze import analyze_results
         
         # Create a simple simulation result

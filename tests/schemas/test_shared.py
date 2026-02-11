@@ -1,6 +1,6 @@
 """Tests for schemas.shared module."""
 import pytest
-from schemas.shared import AllocationDTO, CompanyType, UserSegment
+from schemas.shared import CompanyType, UserSegment
 
 class TestAllocationDTO:
     @pytest.mark.unit

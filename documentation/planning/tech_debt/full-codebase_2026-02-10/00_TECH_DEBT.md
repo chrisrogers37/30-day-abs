@@ -77,8 +77,8 @@ Phase 08: Add missing test coverage (should run LAST, after code stabilizes)
 |-------|----------|------|--------|------------|
 | [01](./01_fix_fisher_exact_and_chi_square.md) | fix(core): use scipy for Fisher's exact and chi-square tests | Medium | 3-5h | None | ✅ PR #9 |
 | [02](./02_consolidate_duplicated_functions.md) | refactor(core): consolidate duplicated statistical functions | Low | 4-6h | Phase 01 | ✅ PR #10 |
-| [03](./03_extract_named_constants.md) | refactor(core): extract magic numbers to named constants | Low | 2-3h | Phase 02 |
-| [04](./04_clean_unused_imports.md) | chore: remove unused imports across codebase | Low | 1h | None |
+| [03](./03_extract_named_constants.md) | refactor(core): extract magic numbers to named constants | Low | 2-3h | Phase 02 | ✅ PR #11 |
+| [04](./04_clean_unused_imports.md) | chore: remove unused imports across codebase | Low | 1h | None | ✅ PR #12 |
 | [05](./05_extract_scoring_helper.md) | refactor(core): extract scoring helper to reduce validation boilerplate | Low | 3-4h | None |
 | [06](./06_extract_shared_helpers.md) | refactor: extract shared DTO conversion and question selection helpers | Low | 3-5h | None |
 | [07](./07_narrow_except_clauses.md) | fix(llm): narrow broad except clauses to specific exceptions | Low | 3-4h | None |

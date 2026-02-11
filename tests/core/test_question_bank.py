@@ -4,7 +4,7 @@ Tests for core.question_bank module - Question pool system for variable quizzes.
 
 import pytest
 from core.question_bank import (
-    Question, QuestionCategory, QuestionDifficulty, AnswerType,
+    QuestionCategory, QuestionDifficulty, AnswerType,
     DESIGN_QUESTIONS, ANALYSIS_QUESTIONS, PLANNING_QUESTIONS, INTERPRETATION_QUESTIONS,
     get_question_by_id, get_all_questions, get_questions_by_category, get_question_pool_summary,
     get_default_design_questions, get_default_analysis_questions,

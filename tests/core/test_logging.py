@@ -16,7 +16,6 @@ Tests cover:
 import pytest
 import logging
 from pathlib import Path
-import tempfile
 from core.logging import (
     setup_logging,
     get_logger,

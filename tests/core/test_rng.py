@@ -4,7 +4,7 @@ Tests for core.rng module - Random number generation.
 
 import pytest
 import numpy as np
-from core.rng import get_rng, generate_bernoulli_samples, set_global_seed, reset_rng
+from core.rng import get_rng, generate_bernoulli_samples, set_global_seed
 
 
 class TestRNGDeterminism:

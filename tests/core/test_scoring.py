@@ -7,7 +7,7 @@ from core.scoring import (
     generate_design_answer_key,
     generate_analysis_answer_key
 )
-from tests.helpers.factories import create_design_params, create_significant_positive_result
+from tests.helpers.factories import create_significant_positive_result
 
 
 class TestGenerateDesignAnswerKey:

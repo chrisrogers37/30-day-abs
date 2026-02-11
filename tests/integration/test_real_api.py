@@ -7,7 +7,6 @@ They test the complete end-to-end flow with real LLM API calls.
 
 import pytest
 import os
-import asyncio
 
 # Helper to check if API key is available
 HAS_API_KEY = os.getenv("OPENAI_API_KEY") is not None
@@ -33,7 +32,7 @@ class TestRealOpenAIIntegration:
         5. Analyzes results
         6. Validates all outputs end-to-end
         """
-        from llm.integration import create_llm_integration, SimulationPipelineResult
+        from llm.integration import create_llm_integration
 
         # Create integration with real OpenAI API
         api_key = os.getenv("OPENAI_API_KEY")

@@ -11,7 +11,6 @@ import json
 
 from tests.fixtures.llm_responses import (
     ECOMMERCE_SCENARIO_RESPONSE,
-    SAAS_SCENARIO_RESPONSE,
     create_openai_response
 )
 

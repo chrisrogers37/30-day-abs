@@ -5,7 +5,6 @@ This module provides a centralized PRNG factory to ensure consistent
 random number generation across all simulation components.
 """
 
-import random
 import numpy as np
 from typing import Generator, Optional
 

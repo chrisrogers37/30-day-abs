@@ -8,14 +8,12 @@ design parameter validation.
 import pytest
 from core.design import compute_sample_size
 from core.utils import calculate_minimum_detectable_effect, get_z_score
-from core.types import DesignParams, Allocation
+from core.types import Allocation
 
 from tests.helpers.assertions import (
-    assert_within_tolerance,
-    assert_sample_size_valid
+    assert_within_tolerance
 )
 from tests.helpers.factories import create_design_params
-from tests.fixtures.expected_results import EXPECTED_SAMPLE_SIZES
 
 
 class TestComputeSampleSize:

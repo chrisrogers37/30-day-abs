@@ -6,11 +6,9 @@ Tests for validate_test_duration and suggest_parameter_adjustments functions.
 
 import pytest
 from core.design import (
-    compute_sample_size,
     validate_test_duration,
     suggest_parameter_adjustments
 )
-from tests.helpers.factories import create_design_params
 
 
 class TestValidateTestDuration:

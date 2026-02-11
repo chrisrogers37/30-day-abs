@@ -9,7 +9,7 @@ These tests verify that the novelty scorer correctly:
 """
 
 import pytest
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 
 from llm.guardrails import (
     NoveltyScorer,
@@ -18,7 +18,6 @@ from llm.guardrails import (
     record_generated_scenario
 )
 from schemas.scenario import ScenarioResponseDTO
-from schemas.shared import CompanyType, UserSegment
 
 
 def create_mock_scenario(

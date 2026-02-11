@@ -9,7 +9,7 @@ from core.validation import (
     calculate_correct_design_answers,
     calculate_correct_analysis_answers
 )
-from tests.helpers.factories import create_design_params, create_significant_positive_result
+from tests.helpers.factories import create_significant_positive_result
 
 
 class TestValidateDesignAnswer:
@@ -18,7 +18,6 @@ class TestValidateDesignAnswer:
     @pytest.mark.unit
     def test_validate_question_1_mde(self, standard_design_params):
         """Test validation of Question 1: MDE."""
-        from core.design import compute_sample_size
         
         baseline = standard_design_params.baseline_conversion_rate
         target_lift = standard_design_params.target_lift_pct

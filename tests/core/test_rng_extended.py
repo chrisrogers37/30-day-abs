@@ -7,10 +7,6 @@ import numpy as np
 from core.rng import (
     set_global_seed,
     get_rng,
-    generate_bernoulli_samples,
-    generate_uniform_samples,
-    generate_normal_samples,
-    generate_choice_samples,
     generate_weighted_choice_samples,
     generate_poisson_samples,
     generate_exponential_samples,
@@ -96,7 +92,7 @@ class TestRNGStateManagement:
     @pytest.mark.unit
     def test_rng_state_get_set(self):
         """Test RNG state save/restore."""
-        from core.rng import get_rng_state, set_rng_state
+        from core.rng import get_rng_state
         
         set_global_seed(42)
         rng = get_rng("test")

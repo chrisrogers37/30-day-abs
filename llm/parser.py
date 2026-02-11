@@ -75,14 +75,13 @@ Dependencies:
 
 import json
 import re
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 from pydantic import ValidationError
 
 from schemas.scenario import ScenarioResponseDTO, ScenarioDTO, LlmExpectedDTO
 from schemas.design import DesignParamsDTO
-from schemas.shared import AllocationDTO
 
 from core.logging import get_logger
 

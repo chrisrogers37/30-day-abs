@@ -6,7 +6,7 @@ calculations, and evaluation scoring.
 """
 
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Tuple
 
 from .logging import get_logger
 

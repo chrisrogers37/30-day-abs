@@ -5,7 +5,6 @@ Extended tests for core.design module - comprehensive design testing.
 import pytest
 from core.design import compute_sample_size
 from tests.helpers.factories import create_design_params
-from tests.helpers.assertions import assert_within_tolerance
 
 
 class TestDesignEdgeCasesExtended:

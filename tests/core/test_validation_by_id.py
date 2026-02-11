@@ -14,12 +14,8 @@ from core.validation import (
     get_question_text,
     get_question_hint
 )
-from core.question_bank import (
-    DESIGN_QUESTIONS, ANALYSIS_QUESTIONS,
-    get_default_design_questions, get_default_analysis_questions
-)
 from core.design import compute_sample_size
-from tests.helpers.factories import create_design_params, create_sim_result
+from tests.helpers.factories import create_sim_result
 
 
 class TestCalculateDesignAnswerById:
