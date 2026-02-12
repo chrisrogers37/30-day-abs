@@ -202,32 +202,8 @@ def _two_proportion_z_test(sim_result: SimResult, alpha: float,
     
     # Calculate p-value
     p_value = _calculate_p_value(z_statistic, direction)
-    
-    # Calculate confidence interval for difference
-    ci_lower, ci_upper = calculate_confidence_interval_for_difference(p1, p2, n1, n2, confidence_level=1 - alpha)
-    
-    # Determine significance
-    significant = p_value < alpha
-    
-    # Calculate effect size (Cohen's h)
-    effect_size = calculate_effect_size_cohens_h(p1, p2)
-    
-    # Calculate achieved power
-    power_achieved = calculate_achieved_power(p1, p2, n1, n2, alpha, direction)
-    
-    # Generate recommendation
-    recommendation = _generate_recommendation(significant, p_value, effect_size, power_achieved)
-    
-    return AnalysisResult(
-        test_statistic=z_statistic,
-        p_value=p_value,
-        confidence_interval=(ci_lower, ci_upper),
-        confidence_level=1 - alpha,
-        significant=significant,
-        effect_size=effect_size,
-        power_achieved=power_achieved,
-        recommendation=recommendation
-    )
+
+    return _build_analysis_result(sim_result, z_statistic, p_value, alpha, direction)
 
 
 def _chi_square_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
@@ -270,34 +246,8 @@ def _chi_square_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
     
     # Calculate p-value (approximate)
     p_value = _chi_square_p_value(chi_square, df=1)
-    
-    # Calculate confidence interval for difference
-    p1 = x1 / n1 if n1 > 0 else 0
-    p2 = x2 / n2 if n2 > 0 else 0
-    ci_lower, ci_upper = calculate_confidence_interval_for_difference(p1, p2, n1, n2, confidence_level=1 - alpha)
-    
-    # Determine significance
-    significant = p_value < alpha
-    
-    # Calculate effect size (Cramér's V)
-    effect_size = math.sqrt(chi_square / total_users)
-    
-    # Calculate achieved power
-    power_achieved = calculate_achieved_power(p1, p2, n1, n2, alpha, "two_tailed")
-    
-    # Generate recommendation
-    recommendation = _generate_recommendation(significant, p_value, effect_size, power_achieved)
-    
-    return AnalysisResult(
-        test_statistic=chi_square,
-        p_value=p_value,
-        confidence_interval=(ci_lower, ci_upper),
-        confidence_level=1 - alpha,
-        significant=significant,
-        effect_size=effect_size,
-        power_achieved=power_achieved,
-        recommendation=recommendation
-    )
+
+    return _build_analysis_result(sim_result, chi_square, p_value, alpha)
 
 
 def _fisher_exact_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
@@ -322,18 +272,47 @@ def _fisher_exact_test(sim_result: SimResult, alpha: float) -> AnalysisResult:
     odds_ratio = float(odds_ratio)
     p_value = float(p_value)
 
-    # Calculate confidence interval for difference
+    return _build_analysis_result(sim_result, odds_ratio, p_value, alpha)
+
+
+def _build_analysis_result(
+    sim_result: SimResult,
+    test_statistic: float,
+    p_value: float,
+    alpha: float,
+    direction: str = "two_tailed"
+) -> AnalysisResult:
+    """
+    Build a standardized AnalysisResult from test-specific statistic and p-value.
+
+    This helper encapsulates the shared post-test flow: confidence interval,
+    effect size, power calculation, recommendation, and result construction.
+
+    Args:
+        sim_result: Simulation results with conversion counts
+        test_statistic: The test-specific statistic (z-score, chi-square, or odds ratio)
+        p_value: The computed p-value
+        alpha: Significance level
+        direction: Test direction for power calculation
+
+    Returns:
+        AnalysisResult with all computed fields
+    """
+    n1, x1 = sim_result.control_n, sim_result.control_conversions
+    n2, x2 = sim_result.treatment_n, sim_result.treatment_conversions
     p1 = x1 / n1 if n1 > 0 else 0
     p2 = x2 / n2 if n2 > 0 else 0
-    ci_lower, ci_upper = calculate_confidence_interval_for_difference(p1, p2, n1, n2, confidence_level=1 - alpha)
 
+    ci_lower, ci_upper = calculate_confidence_interval_for_difference(
+        p1, p2, n1, n2, confidence_level=1 - alpha
+    )
     significant = p_value < alpha
     effect_size = calculate_effect_size_cohens_h(p1, p2)
-    power_achieved = calculate_achieved_power(p1, p2, n1, n2, alpha, "two_tailed")
+    power_achieved = calculate_achieved_power(p1, p2, n1, n2, alpha, direction)
     recommendation = _generate_recommendation(significant, p_value, effect_size, power_achieved)
 
     return AnalysisResult(
-        test_statistic=odds_ratio,
+        test_statistic=test_statistic,
         p_value=p_value,
         confidence_interval=(ci_lower, ci_upper),
         confidence_level=1 - alpha,
