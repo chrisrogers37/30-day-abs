@@ -297,34 +297,24 @@ def calculate_confidence_interval_for_difference(p1: float, p2: float,
     return (lower_bound, upper_bound)
 
 
-def calculate_power_for_proportions(p1: float, p2: float, n: int, 
+def calculate_power_for_proportions(p1: float, p2: float, n: int,
                                   alpha: float = 0.05) -> float:
     """
     Calculate statistical power for comparing two proportions.
-    
+
+    Convenience wrapper for equal sample sizes (two-tailed test).
+    Delegates to calculate_achieved_power().
+
     Args:
         p1: First proportion
         p2: Second proportion
         n: Sample size per group
         alpha: Significance level
-        
+
     Returns:
         Statistical power
     """
-    # Calculate standard error
-    se = math.sqrt(p1 * (1 - p1) / n + p2 * (1 - p2) / n)
-    
-    # Calculate critical value
-    z_alpha = get_z_score(alpha, "two_tailed")
-    
-    # Calculate z-score for the effect
-    effect_size = abs(p2 - p1)
-    z_effect = effect_size / se if se > 0 else 0
-    
-    # Calculate power
-    power = 1 - normal_cdf(z_alpha - z_effect)
-    
-    return min(max(power, 0.0), 1.0)
+    return calculate_achieved_power(p1, p2, n, n, alpha, "two_tailed")
 
 
 def get_z_score(alpha: float, direction: str) -> float:
