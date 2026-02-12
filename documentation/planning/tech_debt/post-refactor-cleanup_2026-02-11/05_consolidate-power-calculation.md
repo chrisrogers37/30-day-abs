@@ -1,5 +1,8 @@
 # Phase 05: Consolidate Power Calculation via Delegation
 
+**Status:** ✅ COMPLETE
+**Started:** 2026-02-11
+**Completed:** 2026-02-11
 **PR Title:** `refactor(utils): delegate calculate_power_for_proportions to calculate_achieved_power`
 **Risk Level:** Low
 **Estimated Effort:** Small (30 minutes)
