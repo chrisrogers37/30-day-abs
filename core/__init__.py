@@ -18,6 +18,7 @@ from .types import (
 
 from .validation import (
     ValidationResult,
+    ScoringContext,
     ScoringResult,
     validate_design_answer,
     validate_analysis_answer,
@@ -49,6 +50,7 @@ __all__ = [
     "TestQuality",
     "StatisticalTestSelection",
     "ValidationResult",
+    "ScoringContext",
     "ScoringResult",
     "validate_design_answer",
     "validate_analysis_answer",

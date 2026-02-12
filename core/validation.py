@@ -38,6 +38,22 @@ class ScoringResult:
     grade: str
 
 
+@dataclass(frozen=True)
+class ScoringContext:
+    """Shared context for scoring and validation operations.
+
+    Bundles the common parameters needed by validate_answer_by_id,
+    score_answers_by_id, and create_variable_quiz_result to reduce
+    parameter counts from 8 to 3.
+    """
+    design_params: Optional[DesignParams] = None
+    sample_size_result: Optional[Any] = None
+    sim_result: Optional[SimResult] = None
+    mde_absolute: Optional[float] = None
+    business_target_absolute: Optional[float] = None
+    alpha: float = 0.05
+
+
 # --- Scoring Helpers ---
 
 def _calculate_grade(percentage: float) -> str:
@@ -720,12 +736,7 @@ def calculate_analysis_answer_by_id(
 def validate_answer_by_id(
     question_id: str,
     user_answer: Any,
-    design_params: Optional[DesignParams] = None,
-    sample_size_result: Optional[Any] = None,
-    sim_result: Optional[SimResult] = None,
-    mde_absolute: Optional[float] = None,
-    business_target_absolute: Optional[float] = None,
-    alpha: float = 0.05
+    ctx: Optional[ScoringContext] = None,
 ) -> ValidationResult:
     """
     Validate an answer using question ID from the question bank.
@@ -733,32 +744,30 @@ def validate_answer_by_id(
     Args:
         question_id: Question identifier from question_bank
         user_answer: User's answer
-        design_params: Design parameters (for design questions)
-        sample_size_result: Sample size result (for design questions)
-        sim_result: Simulation results (for analysis questions)
-        mde_absolute: Pre-calculated MDE absolute value
-        business_target_absolute: Business target for decision questions
-        alpha: Significance level
+        ctx: Scoring context with design_params, sim_result, alpha, etc.
 
     Returns:
         ValidationResult with correctness and feedback
     """
+    if ctx is None:
+        ctx = ScoringContext()
+
     question = get_question_by_id(question_id)
     if question is None:
         raise ValueError(f"Unknown question ID: {question_id}")
 
     # Determine if this is a design or analysis question
     if question_id in DESIGN_QUESTIONS:
-        if design_params is None:
+        if ctx.design_params is None:
             raise ValueError("design_params required for design questions")
         correct_answer, tolerance = calculate_design_answer_by_id(
-            question_id, design_params, sample_size_result, mde_absolute
+            question_id, ctx.design_params, ctx.sample_size_result, ctx.mde_absolute
         )
     else:
-        if sim_result is None:
+        if ctx.sim_result is None:
             raise ValueError("sim_result required for analysis questions")
         correct_answer, tolerance = calculate_analysis_answer_by_id(
-            question_id, sim_result, business_target_absolute, alpha
+            question_id, ctx.sim_result, ctx.business_target_absolute, ctx.alpha
         )
 
     # Validate based on answer type
@@ -808,12 +817,7 @@ def validate_answer_by_id(
 def score_answers_by_id(
     user_answers: Dict[str, Any],
     question_ids: List[str],
-    design_params: Optional[DesignParams] = None,
-    sample_size_result: Optional[Any] = None,
-    sim_result: Optional[SimResult] = None,
-    mde_absolute: Optional[float] = None,
-    business_target_absolute: Optional[float] = None,
-    alpha: float = 0.05
+    ctx: Optional[ScoringContext] = None,
 ) -> ScoringResult:
     """
     Score a set of answers using question IDs.
@@ -821,16 +825,14 @@ def score_answers_by_id(
     Args:
         user_answers: Dict mapping question_id to user's answer
         question_ids: List of question IDs to score
-        design_params: Design parameters (for design questions)
-        sample_size_result: Sample size result (for design questions)
-        sim_result: Simulation results (for analysis questions)
-        mde_absolute: Pre-calculated MDE absolute value
-        business_target_absolute: Business target for decision questions
-        alpha: Significance level
+        ctx: Scoring context with design_params, sim_result, alpha, etc.
 
     Returns:
         ScoringResult with scores and feedback
     """
+    if ctx is None:
+        ctx = ScoringContext()
+
     scores = {}
     total_score = 0
     max_score = len(question_ids)
@@ -844,11 +846,11 @@ def score_answers_by_id(
             try:
                 if question_id in DESIGN_QUESTIONS:
                     correct, tolerance = calculate_design_answer_by_id(
-                        question_id, design_params, sample_size_result, mde_absolute
+                        question_id, ctx.design_params, ctx.sample_size_result, ctx.mde_absolute
                     )
                 else:
                     correct, tolerance = calculate_analysis_answer_by_id(
-                        question_id, sim_result, business_target_absolute, alpha
+                        question_id, ctx.sim_result, ctx.business_target_absolute, ctx.alpha
                     )
             except (ValueError, TypeError, KeyError, ZeroDivisionError):
                 correct, tolerance = "N/A", 0
@@ -865,12 +867,7 @@ def score_answers_by_id(
             result = validate_answer_by_id(
                 question_id=question_id,
                 user_answer=user_answer,
-                design_params=design_params,
-                sample_size_result=sample_size_result,
-                sim_result=sim_result,
-                mde_absolute=mde_absolute,
-                business_target_absolute=business_target_absolute,
-                alpha=alpha
+                ctx=ctx,
             )
 
             scores[question_id] = {

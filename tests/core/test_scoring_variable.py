@@ -16,6 +16,7 @@ from core.scoring import (
     select_and_create_analysis_quiz
 )
 from core.validation import (
+    ScoringContext,
     calculate_design_answer_by_id,
     calculate_analysis_answer_by_id,
     ScoringResult
@@ -168,9 +169,11 @@ class TestCreateVariableQuizResult:
         result = create_variable_quiz_result(
             user_answers=user_answers,
             question_ids=question_ids,
-            design_params=standard_design_params,
-            sample_size_result=sample_size,
-            mde_absolute=mde
+            ctx=ScoringContext(
+                design_params=standard_design_params,
+                sample_size_result=sample_size,
+                mde_absolute=mde,
+            ),
         )
 
         assert isinstance(result, VariableQuizResult)
@@ -199,7 +202,7 @@ class TestCreateVariableQuizResult:
         result = create_variable_quiz_result(
             user_answers=user_answers,
             question_ids=question_ids,
-            sim_result=sim_result
+            ctx=ScoringContext(sim_result=sim_result),
         )
 
         assert isinstance(result, VariableQuizResult)
@@ -320,9 +323,11 @@ class TestIntegration:
         result = create_variable_quiz_result(
             user_answers=user_answers,
             question_ids=answer_key.question_ids,
-            design_params=standard_design_params,
-            sample_size_result=sample_size,
-            mde_absolute=mde
+            ctx=ScoringContext(
+                design_params=standard_design_params,
+                sample_size_result=sample_size,
+                mde_absolute=mde,
+            ),
         )
 
         # 4. Verify results
@@ -360,7 +365,7 @@ class TestIntegration:
         result = create_variable_quiz_result(
             user_answers=user_answers,
             question_ids=answer_key.question_ids,
-            sim_result=sim_result
+            ctx=ScoringContext(sim_result=sim_result),
         )
 
         # 4. Verify results

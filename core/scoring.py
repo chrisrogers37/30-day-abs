@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from .types import SimResult, DesignParams
 from .validation import (
+    ScoringContext,
     ScoringResult,
     calculate_correct_design_answers, calculate_correct_analysis_answers,
     score_answers_by_id, calculate_design_answer_by_id, calculate_analysis_answer_by_id
@@ -481,12 +482,7 @@ def generate_variable_quiz_feedback(
 def create_variable_quiz_result(
     user_answers: Dict[str, Any],
     question_ids: List[str],
-    design_params: Optional[DesignParams] = None,
-    sample_size_result: Optional[Any] = None,
-    sim_result: Optional[SimResult] = None,
-    mde_absolute: Optional[float] = None,
-    business_target_absolute: Optional[float] = None,
-    alpha: float = 0.05
+    ctx: Optional[ScoringContext] = None,
 ) -> VariableQuizResult:
     """
     Create a complete variable quiz result with scoring and feedback.
@@ -494,43 +490,36 @@ def create_variable_quiz_result(
     Args:
         user_answers: Dict mapping question_id to user's answer
         question_ids: List of question IDs to score
-        design_params: Design parameters (for design questions)
-        sample_size_result: Sample size result (for design questions)
-        sim_result: Simulation results (for analysis questions)
-        mde_absolute: Pre-calculated MDE absolute value
-        business_target_absolute: Business target for decision questions
-        alpha: Significance level
+        ctx: Scoring context with design_params, sim_result, alpha, etc.
 
     Returns:
         Complete VariableQuizResult with scoring and feedback
     """
+    if ctx is None:
+        ctx = ScoringContext()
+
     # Determine if this is design or analysis based on first question
     first_qid = question_ids[0] if question_ids else None
     is_design = first_qid in DESIGN_QUESTIONS if first_qid else False
 
     if is_design:
-        if design_params is None or sample_size_result is None:
+        if ctx.design_params is None or ctx.sample_size_result is None:
             raise ValueError("design_params and sample_size_result required for design questions")
         answer_key = generate_variable_design_answer_key(
-            question_ids, design_params, sample_size_result, mde_absolute
+            question_ids, ctx.design_params, ctx.sample_size_result, ctx.mde_absolute
         )
     else:
-        if sim_result is None:
+        if ctx.sim_result is None:
             raise ValueError("sim_result required for analysis questions")
         answer_key = generate_variable_analysis_answer_key(
-            question_ids, sim_result, business_target_absolute, alpha
+            question_ids, ctx.sim_result, ctx.business_target_absolute, ctx.alpha
         )
 
     # Score the answers
     scoring_result = score_answers_by_id(
         user_answers=user_answers,
         question_ids=question_ids,
-        design_params=design_params,
-        sample_size_result=sample_size_result,
-        sim_result=sim_result,
-        mde_absolute=mde_absolute,
-        business_target_absolute=business_target_absolute,
-        alpha=alpha
+        ctx=ctx,
     )
 
     # Generate feedback
