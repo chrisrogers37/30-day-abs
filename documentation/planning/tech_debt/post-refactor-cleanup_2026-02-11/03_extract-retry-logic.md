@@ -3,6 +3,7 @@
 **Status:** ✅ COMPLETE
 **Started:** 2026-02-11
 **Completed:** 2026-02-11
+**PR:** #19
 **PR Title:** `refactor(llm): extract retry loop from generate_completion`
 **Risk Level:** Low
 **Estimated Effort:** Small (1-2 hours)
