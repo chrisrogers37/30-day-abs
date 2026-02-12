@@ -7,6 +7,7 @@ with the question_bank.py module for variable quiz experiences.
 
 import pytest
 from core.validation import (
+    ScoringContext,
     validate_answer_by_id,
     calculate_design_answer_by_id,
     calculate_analysis_answer_by_id,
@@ -370,8 +371,7 @@ class TestValidateAnswerById:
         result = validate_answer_by_id(
             "mde_absolute",
             correct_answer,
-            design_params=standard_design_params,
-            mde_absolute=mde
+            ctx=ScoringContext(design_params=standard_design_params, mde_absolute=mde),
         )
 
         assert result.is_correct is True
@@ -382,7 +382,7 @@ class TestValidateAnswerById:
         result = validate_answer_by_id(
             "mde_absolute",
             999.0,  # Wrong answer
-            design_params=standard_design_params
+            ctx=ScoringContext(design_params=standard_design_params),
         )
 
         assert result.is_correct is False
@@ -401,8 +401,7 @@ class TestValidateAnswerById:
         result = validate_answer_by_id(
             "mde_absolute",
             answer_within_tolerance,
-            design_params=standard_design_params,
-            mde_absolute=mde
+            ctx=ScoringContext(design_params=standard_design_params, mde_absolute=mde),
         )
 
         assert result.is_correct is True
@@ -420,7 +419,7 @@ class TestValidateAnswerById:
         result = validate_answer_by_id(
             "lift_direction",
             "Yes",
-            sim_result=sim_result
+            ctx=ScoringContext(sim_result=sim_result),
         )
 
         assert result.is_correct is True
@@ -439,7 +438,7 @@ class TestValidateAnswerById:
             result = validate_answer_by_id(
                 "lift_direction",
                 variant,
-                sim_result=sim_result
+                ctx=ScoringContext(sim_result=sim_result),
             )
             assert result.is_correct is True
 
@@ -462,7 +461,7 @@ class TestValidateAnswerById:
         result = validate_answer_by_id(
             "confidence_interval",
             correct_ci,
-            sim_result=sim_result
+            ctx=ScoringContext(sim_result=sim_result),
         )
 
         # Use == instead of 'is' because numpy may return np.True_
@@ -511,9 +510,11 @@ class TestScoreAnswersById:
         result = score_answers_by_id(
             user_answers=user_answers,
             question_ids=question_ids,
-            design_params=standard_design_params,
-            sample_size_result=sample_size,
-            mde_absolute=mde
+            ctx=ScoringContext(
+                design_params=standard_design_params,
+                sample_size_result=sample_size,
+                mde_absolute=mde,
+            ),
         )
 
         assert result.total_score == 3
@@ -535,8 +536,10 @@ class TestScoreAnswersById:
         result = score_answers_by_id(
             user_answers=user_answers,
             question_ids=question_ids,
-            design_params=standard_design_params,
-            sample_size_result=sample_size
+            ctx=ScoringContext(
+                design_params=standard_design_params,
+                sample_size_result=sample_size,
+            ),
         )
 
         assert result.total_score == 0
@@ -567,9 +570,11 @@ class TestScoreAnswersById:
         result = score_answers_by_id(
             user_answers=user_answers,
             question_ids=question_ids,
-            design_params=standard_design_params,
-            sample_size_result=sample_size,
-            mde_absolute=mde
+            ctx=ScoringContext(
+                design_params=standard_design_params,
+                sample_size_result=sample_size,
+                mde_absolute=mde,
+            ),
         )
 
         assert result.total_score == 1
@@ -589,8 +594,10 @@ class TestScoreAnswersById:
         result = score_answers_by_id(
             user_answers=user_answers,
             question_ids=question_ids,
-            design_params=standard_design_params,
-            sample_size_result=sample_size
+            ctx=ScoringContext(
+                design_params=standard_design_params,
+                sample_size_result=sample_size,
+            ),
         )
 
         assert result.max_score == 2
@@ -618,7 +625,7 @@ class TestScoreAnswersById:
         result = score_answers_by_id(
             user_answers=user_answers,
             question_ids=question_ids,
-            sim_result=sim_result
+            ctx=ScoringContext(sim_result=sim_result),
         )
 
         assert result.total_score == 3
