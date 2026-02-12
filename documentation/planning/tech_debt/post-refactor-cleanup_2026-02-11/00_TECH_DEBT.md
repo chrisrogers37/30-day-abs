@@ -160,7 +160,7 @@ This monolithic UI file is the largest in the codebase and handles multiple resp
 | 03 | Extract retry logic from LLM client | Medium | Small | `llm/client.py` | ✅ COMPLETE |
 | 04 | Deduplicate NoveltyScorer similarity calc | Medium | Small | `llm/guardrails.py` | ✅ COMPLETE |
 | 05 | Consolidate power calculation via delegation | Low | Small | `core/utils.py` | ✅ COMPLETE |
-| 06 | Consolidate categorical generators | Low | Small | `core/simulate.py` |
+| 06 | Consolidate categorical generators | Low | Small | `core/simulate.py` | ✅ COMPLETE |
 | 07 | Extract shared answer key generation loop | Low | Small | `core/scoring.py` |
 | 08 | Fix hardcoded timestamp + document Anthropic TODO | Low | Small | `llm/parser.py`, `llm/client.py` |
 
