@@ -248,30 +248,38 @@ def _generate_page_views(converted: bool) -> int:
         return random.randint(*NON_CONVERTER_PAGE_VIEW_RANGE)
 
 
+def _generate_categorical(categories: list, weights: list) -> str:
+    """
+    Generate a random categorical value from weighted categories.
+
+    Args:
+        categories: List of category strings
+        weights: List of corresponding weights
+
+    Returns:
+        Selected category string
+    """
+    return random.choices(categories, weights=weights)[0]
+
+
 def _generate_device_type() -> str:
     """
     Generate realistic device type distribution.
-    
+
     Returns:
         Device type string
     """
-    return random.choices(
-        DEVICE_TYPES,
-        weights=DEVICE_WEIGHTS
-    )[0]
+    return _generate_categorical(DEVICE_TYPES, DEVICE_WEIGHTS)
 
 
 def _generate_traffic_source() -> str:
     """
     Generate realistic traffic source distribution.
-    
+
     Returns:
         Traffic source string
     """
-    return random.choices(
-        TRAFFIC_SOURCES,
-        weights=TRAFFIC_WEIGHTS
-    )[0]
+    return _generate_categorical(TRAFFIC_SOURCES, TRAFFIC_WEIGHTS)
 
 
 def validate_simulation_consistency(sim_result: SimResult, expected_rates: Dict[str, float], 
