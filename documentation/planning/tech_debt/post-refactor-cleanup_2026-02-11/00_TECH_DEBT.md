@@ -156,7 +156,7 @@ This monolithic UI file is the largest in the codebase and handles multiple resp
 | Phase | Finding | Priority | Effort | Files Modified |
 |-------|---------|----------|--------|----------------|
 | 01 | Extract shared analysis result builder | High | Small | `core/analyze.py` | ✅ COMPLETE |
-| 02 | Introduce `ScoringContext` dataclass | High | Medium | `core/validation.py`, `core/scoring.py` |
+| 02 | Introduce `ScoringContext` dataclass | High | Medium | `core/validation.py`, `core/scoring.py` | ✅ COMPLETE |
 | 03 | Extract retry logic from LLM client | Medium | Small | `llm/client.py` |
 | 04 | Deduplicate NoveltyScorer similarity calc | Medium | Small | `llm/guardrails.py` |
 | 05 | Consolidate power calculation via delegation | Low | Small | `core/utils.py` |
