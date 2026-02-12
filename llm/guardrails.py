@@ -759,56 +759,72 @@ class NoveltyScorer:
         self.history_size = history_size
         self.recent_scenarios: List[Dict] = []
 
+    # Tier classification thresholds (threshold, tier_name)
+    _TRAFFIC_TIERS = [
+        (1000, "early_stage"),
+        (10000, "growth"),
+        (100000, "scale"),
+        (None, "enterprise"),
+    ]
+
+    _BASELINE_TIERS = [
+        (0.01, "very_low"),
+        (0.05, "low"),
+        (0.15, "medium"),
+        (0.30, "high"),
+        (None, "very_high"),
+    ]
+
+    _EFFECT_TIERS = [
+        (0.05, "incremental"),
+        (0.20, "moderate"),
+        (0.50, "significant"),
+        (None, "transformational"),
+    ]
+
+    # Feature weights for similarity scoring
+    _SIMILARITY_WEIGHTS = {
+        "company_type": 0.25,
+        "user_segment": 0.15,
+        "primary_kpi": 0.10,
+        "traffic_tier": 0.10,
+        "baseline_tier": 0.10,
+        "effect_tier": 0.10,
+        "alpha": 0.10,
+        "power": 0.10,
+    }
+
+    @staticmethod
+    def _classify_tier(value: float, thresholds: list) -> str:
+        """Classify a numeric value into a tier based on thresholds."""
+        for threshold, tier_name in thresholds:
+            if threshold is None or value < threshold:
+                return tier_name
+        return thresholds[-1][1]
+
     def _extract_features(self, scenario_dto: ScenarioResponseDTO) -> Dict:
         """Extract features from a scenario for comparison."""
         scenario = scenario_dto.scenario
         design_params = scenario_dto.design_params
 
-        # Determine traffic tier
-        traffic = design_params.expected_daily_traffic
-        if traffic < 1000:
-            traffic_tier = "early_stage"
-        elif traffic < 10000:
-            traffic_tier = "growth"
-        elif traffic < 100000:
-            traffic_tier = "scale"
-        else:
-            traffic_tier = "enterprise"
-
-        # Determine baseline tier
-        baseline = design_params.baseline_conversion_rate
-        if baseline < 0.01:
-            baseline_tier = "very_low"
-        elif baseline < 0.05:
-            baseline_tier = "low"
-        elif baseline < 0.15:
-            baseline_tier = "medium"
-        elif baseline < 0.30:
-            baseline_tier = "high"
-        else:
-            baseline_tier = "very_high"
-
-        # Determine effect size tier
-        lift = design_params.target_lift_pct
-        if lift < 0.05:
-            effect_tier = "incremental"
-        elif lift < 0.20:
-            effect_tier = "moderate"
-        elif lift < 0.50:
-            effect_tier = "significant"
-        else:
-            effect_tier = "transformational"
-
         return {
             "company_type": scenario.company_type.value if hasattr(scenario.company_type, 'value') else str(scenario.company_type),
             "user_segment": scenario.user_segment.value if hasattr(scenario.user_segment, 'value') else str(scenario.user_segment),
             "primary_kpi": scenario.primary_kpi,
-            "traffic_tier": traffic_tier,
-            "baseline_tier": baseline_tier,
-            "effect_tier": effect_tier,
+            "traffic_tier": self._classify_tier(design_params.expected_daily_traffic, self._TRAFFIC_TIERS),
+            "baseline_tier": self._classify_tier(design_params.baseline_conversion_rate, self._BASELINE_TIERS),
+            "effect_tier": self._classify_tier(design_params.target_lift_pct, self._EFFECT_TIERS),
             "alpha": design_params.alpha,
             "power": design_params.power,
         }
+
+    def _calculate_similarity(self, features_a: Dict, features_b: Dict) -> float:
+        """Calculate weighted similarity between two feature sets (0.0 to 1.0)."""
+        similarity = 0.0
+        for feature, weight in self._SIMILARITY_WEIGHTS.items():
+            if features_a.get(feature) == features_b.get(feature):
+                similarity += weight
+        return similarity
 
     def score_novelty(self, scenario_dto: ScenarioResponseDTO) -> float:
         """
@@ -825,71 +841,31 @@ class NoveltyScorer:
 
         new_features = self._extract_features(scenario_dto)
 
-        # Calculate similarity to each recent scenario
+        # Calculate similarity to each recent scenario in a single pass
         total_similarity = 0.0
-
-        for recent in self.recent_scenarios:
-            similarity = 0.0
-
-            # Same company type: high penalty
-            if new_features["company_type"] == recent["company_type"]:
-                similarity += 0.25
-
-            # Same user segment: moderate penalty
-            if new_features["user_segment"] == recent["user_segment"]:
-                similarity += 0.15
-
-            # Same KPI: moderate penalty
-            if new_features["primary_kpi"] == recent["primary_kpi"]:
-                similarity += 0.10
-
-            # Same traffic tier: low penalty
-            if new_features["traffic_tier"] == recent["traffic_tier"]:
-                similarity += 0.10
-
-            # Same baseline tier: low penalty
-            if new_features["baseline_tier"] == recent["baseline_tier"]:
-                similarity += 0.10
-
-            # Same effect tier: low penalty
-            if new_features["effect_tier"] == recent["effect_tier"]:
-                similarity += 0.10
-
-            # Similar alpha (same band)
-            if new_features["alpha"] == recent["alpha"]:
-                similarity += 0.10
-
-            # Similar power (same band)
-            if new_features["power"] == recent["power"]:
-                similarity += 0.10
-
-            total_similarity += similarity
-
-        # Average similarity across recent scenarios
-        avg_similarity = total_similarity / len(self.recent_scenarios)
-
-        # Weight more recent scenarios higher
         recency_weighted_similarity = 0.0
+
         for i, recent in enumerate(self.recent_scenarios):
-            recency_weight = (i + 1) / len(self.recent_scenarios)  # More recent = higher weight
+            total_similarity += self._calculate_similarity(new_features, recent)
 
-            similarity = 0.0
+            # Recency weight: more recent scenarios have higher weight
+            recency_weight = (i + 1) / len(self.recent_scenarios)
+            recency_sim = 0.0
             if new_features["company_type"] == recent["company_type"]:
-                similarity += 0.25
+                recency_sim += 0.25
             if new_features["user_segment"] == recent["user_segment"]:
-                similarity += 0.15
+                recency_sim += 0.15
             if new_features["primary_kpi"] == recent["primary_kpi"]:
-                similarity += 0.10
+                recency_sim += 0.10
+            recency_weighted_similarity += recency_sim * recency_weight
 
-            recency_weighted_similarity += similarity * recency_weight
+        avg_similarity = total_similarity / len(self.recent_scenarios)
 
         # Combine average and recency-weighted similarity
         combined_similarity = (avg_similarity + recency_weighted_similarity) / 2
 
         # Convert to novelty score
-        novelty = max(0.0, 1.0 - combined_similarity)
-
-        return novelty
+        return max(0.0, 1.0 - combined_similarity)
 
     def record_scenario(self, scenario_dto: ScenarioResponseDTO) -> None:
         """

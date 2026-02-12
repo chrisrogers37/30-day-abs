@@ -1,5 +1,8 @@
 # Phase 04: Deduplicate NoveltyScorer Similarity Calculation
 
+**Status:** ✅ COMPLETE
+**Started:** 2026-02-11
+**Completed:** 2026-02-11
 **PR Title:** `refactor(guardrails): extract similarity helper in NoveltyScorer`
 **Risk Level:** Low
 **Estimated Effort:** Small (1-2 hours)
