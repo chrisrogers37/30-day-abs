@@ -258,107 +258,31 @@ class LLMClient:
         else:
             raise ValueError(f"Unsupported LLM provider: {self.config.provider}")
     
-    async def generate_completion(
-        self,
-        messages: List[Dict[str, str]],
-        system_prompt: Optional[str] = None,
-        **kwargs
-    ) -> LLMResponse:
+    async def _execute_with_retry(self, params: dict) -> LLMResponse:
         """
-        Generate completion with comprehensive retry logic and error handling.
-        
-        This method handles the complete LLM interaction flow including message
-        preparation, retry logic with exponential backoff, rate limiting,
-        error classification, and response formatting.
-        
+        Execute an LLM API call with retry logic and exponential backoff.
+
         Args:
-            messages (List[Dict[str, str]]): List of message dictionaries.
-                Each message should have 'role' (str) and 'content' (str) keys.
-                Valid roles: 'user', 'assistant', 'system'
-            system_prompt (Optional[str]): Optional system prompt to prepend
-                to the message list. If provided, it will be added as the first
-                message with role 'system'.
-            **kwargs: Additional parameters to pass to the LLM call:
-                - temperature (float): Sampling temperature (0-2)
-                - max_tokens (int): Maximum tokens to generate
-                - top_p (float): Nucleus sampling parameter
-                - frequency_penalty (float): Frequency penalty
-                - presence_penalty (float): Presence penalty
-        
+            params: Complete parameters dict for the API call (model, messages, etc.)
+
         Returns:
-            LLMResponse: Standardized response containing:
-                - content: Generated text content
-                - model: Model name used
-                - usage: Token usage statistics
-                - finish_reason: Reason for completion
-                - response_time: Request duration
-                - retry_count: Number of retries performed
-        
+            LLMResponse with generated content and metadata
+
         Raises:
-            LLMError: Base exception for LLM-related errors
-            LLMRateLimitError: When rate limits are exceeded
-            LLMTimeoutError: When requests timeout
-            LLMValidationError: When response validation fails
-        
-        Examples:
-            Basic completion:
-                messages = [{"role": "user", "content": "Hello, world!"}]
-                response = await client.generate_completion(messages)
-                print(response.content)
-            
-            With system prompt:
-                system = "You are a helpful assistant."
-                messages = [{"role": "user", "content": "Explain AI"}]
-                response = await client.generate_completion(messages, system)
-            
-            With custom parameters:
-                response = await client.generate_completion(
-                    messages,
-                    temperature=0.5,
-                    max_tokens=1000
-                )
-        
-        Performance Notes:
-            - Uses exponential backoff for retries (1s, 2s, 4s, ...)
-            - Automatic rate limit handling with configurable delays
-            - Connection pooling for efficient HTTP requests
-            - Async/await support for concurrent operations
+            LLMError: If all retry attempts fail
         """
         start_time = time.time()
-        
-        # Prepare messages
-        full_messages = []
-        if system_prompt:
-            full_messages.append({"role": "system", "content": system_prompt})
-        full_messages.extend(messages)
-        
-        # Log the request details
-        logger.info(f"LLM Request - Provider: {self.config.provider.value}, Model: {self.config.model}")
-        logger.debug(f"LLM Request Messages: {full_messages}")
-        
-        # Prepare parameters
-        params = {
-            "model": self.config.model,
-            "messages": full_messages,
-            "max_tokens": self.config.max_tokens,
-            "temperature": self.config.temperature,
-            **kwargs
-        }
-        
-        logger.debug(f"LLM Request Parameters: {params}")
-        
-        # Retry logic
         last_error = None
+
         for attempt in range(self.config.max_retries + 1):
             try:
                 if self.config.provider == LLMProvider.MOCK:
                     response = await self._client.generate_completion(**params)
-                    # Mock client returns LLMResponse directly
                     response_time = time.time() - start_time
-                    
+
                     logger.info(f"LLM Response (Mock) - Attempt: {attempt + 1}, Time: {response_time:.2f}s")
-                    logger.debug(f"LLM Response Content: {response.content[:500]}...")  # First 500 chars
-                    
+                    logger.debug(f"LLM Response Content: {response.content[:500]}...")
+
                     return LLMResponse(
                         content=response.content,
                         model=response.model,
@@ -369,13 +293,13 @@ class LLMClient:
                     )
                 else:
                     response = await self._client.chat.completions.create(**params)
-                
+
                 response_time = time.time() - start_time
                 content = response.choices[0].message.content
-                
+
                 logger.info(f"LLM Response (OpenAI) - Attempt: {attempt + 1}, Time: {response_time:.2f}s")
-                logger.debug(f"LLM Response Content: {content[:500]}...")  # First 500 chars
-                
+                logger.debug(f"LLM Response Content: {content[:500]}...")
+
                 return LLMResponse(
                     content=content,
                     model=response.model,
@@ -384,24 +308,67 @@ class LLMClient:
                     response_time=response_time,
                     retry_count=attempt
                 )
-                
+
             except (openai.APIError, openai.APIConnectionError, openai.APITimeoutError,
                     openai.RateLimitError, openai.AuthenticationError) as e:
                 last_error = e
                 logger.warning(f"LLM call failed (attempt {attempt + 1}): {e}")
-                
+
                 if attempt < self.config.max_retries:
-                    # Check if it's a rate limit error
                     if "rate limit" in str(e).lower():
                         await asyncio.sleep(self.config.rate_limit_delay * (2 ** attempt))
                     else:
                         await asyncio.sleep(self.config.retry_delay * (2 ** attempt))
                 else:
                     break
-        
-        # If we get here, all retries failed
+
         response_time = time.time() - start_time
         raise LLMError(f"LLM call failed after {self.config.max_retries + 1} attempts: {last_error}")
+
+    async def generate_completion(
+        self,
+        messages: List[Dict[str, str]],
+        system_prompt: Optional[str] = None,
+        **kwargs
+    ) -> LLMResponse:
+        """
+        Generate completion with comprehensive retry logic and error handling.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys
+            system_prompt: Optional system prompt to prepend
+            **kwargs: Additional parameters (temperature, max_tokens, etc.)
+
+        Returns:
+            LLMResponse with generated content and metadata
+
+        Raises:
+            LLMError: Base exception for LLM-related errors
+            LLMRateLimitError: When rate limits are exceeded
+            LLMTimeoutError: When requests timeout
+            LLMValidationError: When response validation fails
+        """
+        # Prepare messages
+        full_messages = []
+        if system_prompt:
+            full_messages.append({"role": "system", "content": system_prompt})
+        full_messages.extend(messages)
+
+        logger.info(f"LLM Request - Provider: {self.config.provider.value}, Model: {self.config.model}")
+        logger.debug(f"LLM Request Messages: {full_messages}")
+
+        # Prepare parameters
+        params = {
+            "model": self.config.model,
+            "messages": full_messages,
+            "max_tokens": self.config.max_tokens,
+            "temperature": self.config.temperature,
+            **kwargs
+        }
+
+        logger.debug(f"LLM Request Parameters: {params}")
+
+        return await self._execute_with_retry(params)
     
     async def generate_scenario(
         self,
