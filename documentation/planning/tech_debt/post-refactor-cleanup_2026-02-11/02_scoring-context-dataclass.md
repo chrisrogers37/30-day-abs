@@ -3,6 +3,7 @@
 **Status:** ✅ COMPLETE
 **Started:** 2026-02-11
 **Completed:** 2026-02-11
+**PR:** #18
 **PR Title:** `refactor(scoring): introduce ScoringContext to reduce parameter counts`
 **Risk Level:** Low
 **Estimated Effort:** Medium (2-3 hours)
