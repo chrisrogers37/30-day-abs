@@ -352,6 +352,42 @@ class VariableQuizResult:
     feedback: List[str]
 
 
+def _build_answer_key_entries(
+    question_ids: List[str],
+    calculate_fn,
+) -> tuple:
+    """
+    Build answer key entries by iterating question IDs and computing answers.
+
+    Args:
+        question_ids: List of question IDs from question_bank
+        calculate_fn: Callable that takes a question_id and returns (answer, tolerance).
+                     Should be a lambda or partial wrapping calculate_*_answer_by_id.
+
+    Returns:
+        Tuple of (questions list, correct_answers dict)
+
+    Raises:
+        ValueError: If a question_id is not found in question_bank
+    """
+    questions = []
+    correct_answers = {}
+
+    for qid in question_ids:
+        question = get_question_by_id(qid)
+        if question is None:
+            raise ValueError(f"Unknown question ID: {qid}")
+        questions.append(question)
+
+        try:
+            answer, _ = calculate_fn(qid)
+            correct_answers[qid] = answer
+        except (ValueError, TypeError, KeyError, ZeroDivisionError) as e:
+            correct_answers[qid] = f"Error: {str(e)}"
+
+    return questions, correct_answers
+
+
 def generate_variable_design_answer_key(
     question_ids: List[str],
     design_params: DesignParams,
@@ -370,22 +406,10 @@ def generate_variable_design_answer_key(
     Returns:
         VariableAnswerKey with selected questions and correct answers
     """
-    questions = []
-    correct_answers = {}
-
-    for qid in question_ids:
-        question = get_question_by_id(qid)
-        if question is None:
-            raise ValueError(f"Unknown question ID: {qid}")
-        questions.append(question)
-
-        try:
-            answer, _ = calculate_design_answer_by_id(
-                qid, design_params, sample_size_result, mde_absolute
-            )
-            correct_answers[qid] = answer
-        except (ValueError, TypeError, KeyError, ZeroDivisionError) as e:
-            correct_answers[qid] = f"Error: {str(e)}"
+    questions, correct_answers = _build_answer_key_entries(
+        question_ids,
+        lambda qid: calculate_design_answer_by_id(qid, design_params, sample_size_result, mde_absolute),
+    )
 
     return VariableAnswerKey(
         question_type="design",
@@ -414,22 +438,10 @@ def generate_variable_analysis_answer_key(
     Returns:
         VariableAnswerKey with selected questions and correct answers
     """
-    questions = []
-    correct_answers = {}
-
-    for qid in question_ids:
-        question = get_question_by_id(qid)
-        if question is None:
-            raise ValueError(f"Unknown question ID: {qid}")
-        questions.append(question)
-
-        try:
-            answer, _ = calculate_analysis_answer_by_id(
-                qid, sim_result, business_target_absolute, alpha
-            )
-            correct_answers[qid] = answer
-        except (ValueError, TypeError, KeyError, ZeroDivisionError) as e:
-            correct_answers[qid] = f"Error: {str(e)}"
+    questions, correct_answers = _build_answer_key_entries(
+        question_ids,
+        lambda qid: calculate_analysis_answer_by_id(qid, sim_result, business_target_absolute, alpha),
+    )
 
     return VariableAnswerKey(
         question_type="analysis",
