@@ -266,6 +266,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Expanded business context**: 36 company types (from 7) across 5 industry categories, 29 user segments (from 6)
+- **Question bank system**: 50+ questions in `core/question_bank.py` across design, analysis, planning, and interpretation categories
+- **Novelty scoring**: `NoveltyScorer` in `llm/guardrails.py` tracks scenario uniqueness to maximize variety
+- **Scenario complications**: `schemas/complications.py` with 17 complication types for realistic experimental challenges
+- **Automatic test selection**: `select_statistical_test()` chooses Fisher's exact, chi-square, or z-test based on sample characteristics
+
 ### Fixed
 - **Chi-square and Fisher's exact tests**: Full scipy-backed implementations replacing partial stubs (PR #9)
 - **Hardcoded timestamp**: Parser now uses `datetime.now(timezone.utc)` instead of stale `"2024-01-01T00:00:00Z"` (PR #24)

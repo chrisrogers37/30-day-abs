@@ -27,7 +27,7 @@ tests/
 ├── __init__.py
 ├── conftest.py                      # Shared pytest fixtures (20+ fixtures)
 │
-├── core/                            # Core module tests (27 test files)
+├── core/                            # Core module tests (25 test files)
 │   ├── test_analyze.py              # Statistical analysis tests
 │   ├── test_analyze_business.py     # Business impact analysis tests
 │   ├── test_analyze_extended.py     # Extended analysis edge cases
@@ -62,8 +62,9 @@ tests/
 │   ├── test_novelty_scoring.py      # Novelty scoring tests
 │   └── test_parser.py               # JSON parsing tests
 │
-├── schemas/                         # Schema validation tests (6 test files)
+├── schemas/                         # Schema validation tests (7 test files)
 │   ├── test_analyze.py              # Analysis schema tests
+│   ├── test_complications.py        # Complications schema tests
 │   ├── test_design.py               # Design schema tests
 │   ├── test_evaluation.py           # Evaluation schema tests
 │   ├── test_scenario.py             # Scenario schema tests

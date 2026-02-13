@@ -3,7 +3,9 @@
 **Date:** January 2025
 **Reviewer:** Advanced Data Science Perspective
 **Branch:** `claude/review-project-codebase-I80YU`
-**Status:** Review Complete
+**Status:** Review Complete — Partially addressed by tech debt remediation (PRs #9-#24, Feb 2026)
+
+> **Staleness warning:** Line number references in this document are from January 2025. Code has been refactored significantly since then — line numbers are approximate. Fisher's exact and chi-square issues were fixed in PR #9 (scipy integration). See updated status markers below.
 
 ---
 
@@ -26,8 +28,8 @@ The codebase demonstrates solid understanding of A/B testing principles and stat
 | Issue | Location | Severity | Recommendation |
 |-------|----------|----------|----------------|
 | **Chi-square threshold too conservative** | Line 63 | Medium | The threshold `min_sample < 30` for chi-square vs z-test is overly conservative. The z-test normal approximation is valid when np ≥ 10, not necessarily n ≥ 30. Consider checking the actual np and n(1-p) conditions instead of a blanket sample size threshold. |
-| **Fisher's exact falls back to chi-square** | Line 286 | High | `_fisher_exact_test` falls back to chi-square for n > 100, but Fisher's exact was *selected* because expected counts were small. This defeats the purpose of the test selection. Should use `scipy.stats.fisher_exact` for accurate p-values. |
-| **Chi-square p-value approximation** | Lines 446-484 | Medium | The `_chi_square_cdf` approximation is crude (`1 - math.exp(-chi_square / 2)`). For an educational tool, should either use `scipy.stats.chi2.sf` or clearly document this is a teaching simplification. |
+| **~~Fisher's exact falls back to chi-square~~** | ~~Line 286~~ | ~~High~~ | ✅ **FIXED in PR #9** — Now uses `scipy.stats.fisher_exact` directly with no fallback. |
+| **~~Chi-square p-value approximation~~** | ~~Lines 446-484~~ | ~~Medium~~ | ✅ **FIXED in PR #9** — Now uses `scipy.stats.chi2.sf` for accurate p-values. |
 
 ### Example of Excellent Design
 
@@ -188,13 +190,13 @@ Consider aligning thresholds or adding this interpretation guide to the UI.
 ## Summary Recommendations
 
 ### High Priority
-1. **Fix Fisher's exact test fallback** — `PENDING` — Currently defeats the purpose of automatic selection
+1. **~~Fix Fisher's exact test fallback~~** — ✅ `COMPLETED` (PR #9) — Now uses `scipy.stats.fisher_exact` directly
 2. **Add multiple testing / Bonferroni questions** — `PENDING` — Critical gap in educational content
 3. **Support unequal allocation properly** — `PENDING` — Formula needs adjustment for non-50/50 splits
 
 ### Medium Priority
 4. **Add sequential testing education** — `PENDING` — Peeking bias is a common real-world problem
-5. **Use scipy.stats when available** — `PENDING` — More accurate p-values for chi-square, Fisher's exact
+5. **~~Use scipy.stats when available~~** — ✅ `COMPLETED` (PR #9) — Both `fisher_exact` and `chi2` use scipy
 6. **Add CI bounds checking** — `PENDING` — Prevent impossible confidence intervals
 7. **Sync simulation duration with design** — `PENDING` — Use calculated days_required, not hardcoded 30
 

@@ -61,9 +61,10 @@ pip install -r requirements-dev.txt
 streamlit run ui/streamlit_app.py
 ```
 
-**Required**: Add an OpenAI API key for scenario generation:
+**Required**: Configure environment variables for scenario generation:
 ```bash
-echo "OPENAI_API_KEY=your_key_here" > .env
+cp .env.example .env
+# Edit .env and add your OpenAI API key
 ```
 
 ### Running Tests

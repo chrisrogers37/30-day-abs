@@ -18,7 +18,7 @@ The core module provides:
 - **Deterministic**: All functions produce consistent results with same inputs
 - **Immutable Types**: All dataclasses are frozen for data integrity
 - **Mathematical Focus**: Only mathematical domain logic, no business context
-- **Testable**: ~89% average coverage on core mathematical modules (456 tests total)
+- **Testable**: Comprehensive test coverage across core mathematical modules (634+ tests)
 - **Reproducible**: Fixed seeds ensure consistent simulation results
 
 ## Module Contents
@@ -66,16 +66,11 @@ Statistical design functions for AB test planning:
 - **`compute_sample_size()`**: Two-proportion z-test sample size calculation
   - Uses standard formula: `n = (z_alpha + z_beta)^2 * [p1(1-p1) + p2(1-p2)] / (p2-p1)^2`
   - Returns `SampleSize` with per-arm, total, days required, and achieved power
-- **`_get_z_score()`**: Z-score calculation for given alpha and direction
-  - Supports one-tailed and two-tailed tests
-  - Uses exact values for common alpha levels (0.01, 0.05, 0.10)
-- **`_calculate_achieved_power()`**: Power calculation for given sample size
-  - Calculates achieved power based on effect size and sample size
-- **`calculate_minimum_detectable_effect()`**: MDE calculation
-  - Calculates minimum detectable effect for given sample size and power
+- **`_get_z_score`**: Re-exported from `utils.get_z_score` for backwards compatibility
 - **`validate_test_duration()`**: Validate test duration against business constraints
 - **`suggest_parameter_adjustments()`**: Suggest parameter changes if constraints not met
-- **`_normal_cdf()`**: Normal cumulative distribution function approximation
+
+> **Note:** Power calculation (`calculate_achieved_power`), MDE calculation (`calculate_minimum_detectable_effect`), and `normal_cdf` live in `utils.py`, not `design.py`.
 
 ### `simulate.py` - Data Simulation
 Realistic data generation with treatment effect variation:
@@ -108,19 +103,15 @@ Comprehensive statistical testing and analysis:
   - Calculates z-statistic, p-value, confidence interval, effect size, achieved power
 - **`_chi_square_test()`**: Chi-square test for categorical data
   - Creates 2x2 contingency table, calculates chi-square statistic
-- **`_fisher_exact_test()`**: Fisher's exact test for small samples
-  - Uses hypergeometric distribution approximation
+- **`select_statistical_test()`**: Automatic test selection based on sample size and expected cell counts
+  - Returns `StatisticalTestSelection` with test type, reasoning, and alternatives
+- **`_fisher_exact_test()`**: Fisher's exact test using `scipy.stats.fisher_exact`
 - **`_calculate_p_value()`**: P-value calculation for z-statistic
-- **`_calculate_confidence_interval()`**: Confidence interval for difference in proportions
-- **`_calculate_effect_size()`**: Cohen's h effect size calculation
-- **`_calculate_achieved_power()`**: Achieved power calculation
 - **`_generate_recommendation()`**: Business recommendation based on statistical results
 - **`make_rollout_decision()`**: Rollout decision based on confidence interval vs business target
 - **`calculate_business_impact()`**: Business impact calculations and projections
 - **`assess_test_quality()`**: Test quality indicators and potential issues
-- **`_normal_cdf()`**: Normal cumulative distribution function
-- **`_chi_square_p_value()`**: Chi-square p-value approximation
-- **`_fisher_exact_p_value()`**: Fisher's exact p-value approximation
+- **`_chi_square_p_value()`**: Chi-square p-value via `scipy.stats.chi2.sf`
 
 ### `rng.py` - Random Number Generation
 Centralized PRNG factory for reproducible simulations:
@@ -388,7 +379,6 @@ The core module has comprehensive test coverage:
 
 Run tests with:
 ```bash
-python test_basic.py  # Basic functionality test
 pytest tests/         # Full test suite
 ```
 
@@ -396,15 +386,14 @@ pytest tests/         # Full test suite
 
 The core module is designed to be used by:
 
-- **`api/`**: FastAPI endpoints convert DTOs to core types
 - **`llm/`**: LLM outputs are validated and converted to core types
-- **`ui/`**: User interfaces display core calculation results and use core validation/scoring
+- **`schemas/`**: DTOs bridge between external interfaces and core types (via `DesignParamsDTO.to_design_params()`)
+- **`ui/`**: Streamlit app displays core calculation results and uses core validation/scoring
 
 ## Data Flow
 
 ```
-API DTOs → Core Types → Mathematical Functions → Core Results → API DTOs
-LLM Scenarios → Core Validation → Core Scoring → UI Display
+LLM Scenarios → Schema DTOs → Core Types → Mathematical Functions → Core Results → UI Display
 ```
 
 The core module never directly handles:

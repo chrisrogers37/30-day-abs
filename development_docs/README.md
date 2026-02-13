@@ -30,7 +30,7 @@ Welcome to the development documentation for 30 Day A/Bs! This directory contain
 
 5. **[Scenario Variety Improvement Plan](./SCENARIO_VARIETY_IMPROVEMENT_PLAN.md)** - COMPLETED
    - Expanded business context, parameter space, and question variety
-   - All 5 phases complete with 456 tests passing
+   - All 5 phases complete
 
 ## Quick Start
 
@@ -65,12 +65,11 @@ Welcome to the development documentation for 30 Day A/Bs! This directory contain
 
 ## Testing Achievement
 
-**Current Status** (as of 2026-02-10):
-- ✅ **452 tests passing** (4 skipped, 0 failures)
-- ✅ **456 total tests** collected
-- ✅ **~89% core module average coverage**
-- ✅ **54% overall project coverage** (UI module untested via pytest)
+**Current Status** (as of 2026-02-13):
+- ✅ **634+ tests** across all modules
+- ✅ **Comprehensive core module coverage**
 - ✅ **10,000+ lines of test code**
+- ✅ **Two tech debt remediations completed** (PRs #9-#24)
 
 See the [Testing Guide](./TESTING_GUIDE.md) for full details on running and writing tests.
 
@@ -92,9 +91,23 @@ development_docs/
 ├── schemas/README.md            # Schemas module documentation
 ├── ui/README.md                 # UI module documentation
 ├── tests/README.md              # Testing suite documentation
+├── notebooks/README.md          # Jupyter notebook templates
+├── .env.example                 # Environment variable template
 ├── CHANGELOG.md                 # Version history and changes
 └── README.md                    # Project overview and quickstart
 ```
+
+## CI/CD — GitHub Actions
+
+Two workflows live in `.github/workflows/`:
+
+### `claude.yml` — Claude Code Assistant
+Triggers when `@claude` is mentioned in issue comments, PR review comments, or new issues. Runs Claude Code to respond to the request. Read-only permissions.
+
+### `claude-code-review.yml` — Automated PR Review
+Triggers automatically on PR events (opened, synchronize, ready_for_review, reopened). Runs the Claude Code Review plugin to leave review comments. No manual trigger needed.
+
+Both workflows require the `CLAUDE_CODE_OAUTH_TOKEN` secret configured in the repo settings.
 
 ## Common Tasks
 
@@ -126,6 +139,9 @@ pytest tests/core/                # Specific module
 # With coverage
 pytest --cov=core --cov=schemas --cov-report=html
 open htmlcov/index.html
+
+# Demo: generate 3 scenarios to verify LLM variety (requires API key)
+python test_scenario_variety.py
 ```
 
 See [Testing Guide - Running Tests](./TESTING_GUIDE.md#running-tests) for details.
@@ -215,11 +231,11 @@ See [Development Guide - Code Standards](./DEVELOPMENT_GUIDE.md#code-standards) 
 
 ### Testing
 
-**Comprehensive Coverage**: ~89% on core modules, 54% overall
+**Comprehensive Coverage**: High coverage on core modules
 
 **Mock by Default**: Use mock LLM clients in tests
 
-**Fast Feedback**: Full suite completes in ~29 minutes (456 tests)
+**Fast Feedback**: Full suite completes in ~25 minutes (634+ tests)
 
 **Independent Tests**: Tests should not depend on each other
 
@@ -235,7 +251,7 @@ Major milestones:
 - **1.2.0**: Analysis section with rollout decisions
 - **1.3.0**: MIT license and Streamlit Cloud focus
 - **1.4.0**: Bug fixes and UX improvements
-- **1.5.0**: Comprehensive testing suite (456 tests, 89% core coverage)
+- **1.5.0**: Comprehensive testing suite
 - **1.5.1**: Centralized logging system with quiz session tracking
 
 ## Contributing

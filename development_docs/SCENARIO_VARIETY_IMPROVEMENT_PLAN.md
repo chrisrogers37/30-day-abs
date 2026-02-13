@@ -545,7 +545,7 @@ Chi-square and Fisher's exact tests are now fully integrated with automatic sele
 | `tests/core/test_validation_by_id.py` | 37 | ✅ Pass |
 | `tests/core/test_scoring_variable.py` | 14 | ✅ Pass |
 | `tests/llm/test_novelty_scoring.py` | 23 | ✅ Pass |
-| **Full Suite** | 457 | ✅ Pass (7 skipped) |
+| **Full Suite** | 634+ | ✅ Pass |
 
 ---
 
