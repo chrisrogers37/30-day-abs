@@ -251,7 +251,8 @@ class LLMClient:
                 timeout=self.config.timeout
             )
         elif self.config.provider == LLMProvider.ANTHROPIC:
-            # TODO: Implement Anthropic client
+            # Anthropic provider is defined in LLMProvider enum for future use.
+            # Implementation tracked separately from tech debt remediation.
             raise NotImplementedError("Anthropic client not yet implemented")
         elif self.config.provider == LLMProvider.MOCK:
             self._client = MockLLMClient()
