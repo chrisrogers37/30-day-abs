@@ -266,9 +266,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Chi-square and Fisher's exact tests**: Full scipy-backed implementations replacing partial stubs (PR #9)
+- **Hardcoded timestamp**: Parser now uses `datetime.now(timezone.utc)` instead of stale `"2024-01-01T00:00:00Z"` (PR #24)
+
+### Refactored
+- **Two tech debt remediation sessions** (PRs #9-#24): 16 phases of structural cleanup
+- **Statistical functions**: Consolidated 5 duplicated functions into `core/utils.py`, extracted named constants (PRs #10-#11)
+- **Code hygiene**: Cleaned unused imports, narrowed broad `except` clauses to specific types (PRs #12, #15)
+- **Scoring system**: Extracted scoring helper, shared DTO conversion, introduced `ScoringContext` dataclass, extracted answer key generation loop (PRs #13-#14, #18, #23)
+- **LLM module**: Extracted retry logic from `generate_completion()`, deduplicated `NoveltyScorer` similarity calculation (PRs #19-#20)
+- **Core utilities**: Consolidated power calculation via delegation, consolidated categorical generators (PRs #21-#22)
+- **Test coverage**: Added tests for previously 0% modules (PR #16)
+
 ### Planned
 - Custom scenario creation tools
 - Advanced power analysis features
-- Full chi-square and Fisher's exact test implementations (test selection logic exists; implementations are partial)
 - See [Enhancement Roadmap](development_docs/ENHANCEMENT_ROADMAP.md) for full future plans
 
