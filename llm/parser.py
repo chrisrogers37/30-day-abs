@@ -75,6 +75,7 @@ Dependencies:
 
 import json
 import re
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
@@ -416,7 +417,7 @@ class LLMOutputParser:
                 llm_expected=llm_expected_dto,
                 generation_metadata={"parser": "llm_parser", "version": "1.0"},
                 scenario_id=f"scenario_{hash(str(data)) % 1000000:06d}",
-                created_at="2024-01-01T00:00:00Z"  # TODO: Use actual timestamp
+                created_at=datetime.now(timezone.utc).isoformat()
             )
             
             return response_dto
