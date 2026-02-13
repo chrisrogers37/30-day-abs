@@ -4,7 +4,7 @@
 
 After completing the comprehensive testing suite (v1.5.0) and centralized logging system (v1.5.1), the project is now in an excellent position for strategic enhancements. This roadmap identifies high-impact opportunities across multiple dimensions: **User Experience**, **Technical Architecture**, **Educational Value**, and **Platform Expansion**.
 
-**Current Status**: Production-ready with 89% core coverage, centralized logging, and comprehensive testing infrastructure.
+**Current Status**: Production-ready with comprehensive test coverage (634+ tests), centralized logging, and two completed tech debt remediation sessions (PRs #9-#24).
 
 **Priority Ranking**: 🔴 Critical | 🟡 High | 🟢 Medium | ⚪ Low
 
@@ -124,7 +124,7 @@ core/advanced/
 ### 2.2 Advanced Statistical Tests — `PENDING`
 **Impact**: 🟡 High | **Effort**: 1-2 weeks | **Value**: Statistical rigor
 
-> **Note**: Chi-square and Fisher's exact test selection logic already exists in `core/analyze.py` (automatic test selection with `StatisticalTestSelection`), but the implementations are partial. Mann-Whitney, sequential testing, and Bayesian methods remain unimplemented.
+> **Note**: Chi-square and Fisher's exact tests are fully implemented with scipy in `core/analyze.py` (PR #9), including automatic test selection via `select_statistical_test()`. Mann-Whitney, sequential testing, and Bayesian methods remain unimplemented.
 
 **Features**:
 - Mann-Whitney U test for non-parametric data

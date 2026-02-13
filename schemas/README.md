@@ -144,11 +144,12 @@ class CompanyType(str, Enum):
     PHARMACY = "Digital Pharmacy"
     MENTAL_HEALTH = "Mental Health App"
 
-    # Industrial / B2B (4)
+    # Industrial / B2B (5)
     LOGISTICS = "Logistics"
     HR_TECH = "HR Tech"
     EDTECH = "EdTech"
     REAL_ESTATE = "PropTech"
+    LEGAL_TECH = "Legal Tech"
     # ... plus legacy mappings for backward compatibility
 ```
 

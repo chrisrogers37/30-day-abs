@@ -267,7 +267,7 @@ def score_design_answers(user_answers, scenario_data, sample_size_result):
 ### **Validation Integration**
 - Uses `core.validation.validate_design_answer()` for design question validation
 - Integrates with `core.validation.validate_analysis_answer()` for analysis validation
-- Utilizes `core.scoring.score_design_answers()` for comprehensive scoring
+- Utilizes `core.validation.score_design_answers()` for comprehensive scoring
 
 ## Configuration
 
