@@ -6,6 +6,10 @@ Welcome to the development documentation for 30 Day A/Bs! This directory contain
 
 ### 📚 Available Guides
 
+0. **[System Review 2026-07](../documentation/planning/SYSTEM_REVIEW_2026-07.md)** + **[Steady-State Plan](../documentation/planning/STEADY_STATE_PLAN.md)** - Current priorities
+   - Full-system triage: bugs, tech debt, architecture issues (issue-ready format)
+   - Phased plan toward the functional steady state (strong UI, correct grading)
+
 1. **[Development Guide](./DEVELOPMENT_GUIDE.md)** - Start here!
    - Project architecture and setup
    - Development workflow and best practices
@@ -76,6 +80,10 @@ See the [Testing Guide](./TESTING_GUIDE.md) for full details on running and writ
 ## Documentation Structure
 
 ```
+documentation/planning/
+├── SYSTEM_REVIEW_2026-07.md                 # Full-system triage tracker (July 2026)
+└── STEADY_STATE_PLAN.md                     # Phased plan toward steady state
+
 development_docs/
 ├── README.md                                # This file - navigation guide
 ├── DEVELOPMENT_GUIDE.md                     # General development practices (719 lines)
