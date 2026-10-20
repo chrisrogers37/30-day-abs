@@ -67,7 +67,7 @@ import asyncio
 import os
 import time
 from typing import Dict, List, Optional, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 import openai
@@ -123,7 +123,7 @@ class LLMConfig:
             )
     """
     provider: LLMProvider
-    api_key: str
+    api_key: str = field(repr=False)
     model: str = "gpt-4"
     max_tokens: int = 4000
     temperature: float = 0.7
